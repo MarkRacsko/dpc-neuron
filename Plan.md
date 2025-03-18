@@ -21,6 +21,21 @@
     1. Check sanity of arguments. Every argument must match one of the available flags or be a valid path. If any argument fails this check or there are more than 1 path-like arguments provided, print an appropriate error message and exit.
     2. Set flag based boolean variables that govern the program's behaviour and explore the given path, looking for measurement results without an accompanying report or report files if -t is set. Create a list that stores subdir names where unprocessed measurements are detected.
 
+- Path manipulations using pathlib:
+    1. Check that the target location is a directory, exit if not.
+    2. For each subfolder in target dir:
+        1. figure out report path: report_path = subfolder / report_filename (f string here probably because I want to incorporate the subfolder name into the report's name)
+        2. Check if the report exists, continue if it does and -r is NOT set.
+        3. Process Excel files of measurements found there and make the report. Add it to an overall report if -t or -pt is active.
+
+- Processing work:
+    1. Read events from accompanying event.csv file, create report dataframe
+    2. Figure out which type of measurement this is based on the filename
+    3. Determine threshold (baseline + stdev * 3)
+    4. Smooth (mean 5, for now)
+    5. Take the derivative
+    6. For each event period, determine if the cell reacted to that event (=agonist), if so, determine amplitude
+    7. Update the report appropriately
 
 
 # Planned structure of the project
@@ -32,6 +47,6 @@ What the program should be doing:
     2. Iterate through the list:
         1. Read in file, select columns of interest ([col for col in input_df.columns if "Average" in col])
         2. Parse filename to determine experimental condition
-        2. For each column (=cell), perform smoothing, derivation, determine which agonists it responds to
+        2. For each column (=cell), perform smoothing, derivation, determine which agonists it responds to, relative amplitude of the response
         3. Update report appropriately
     3. Write out report and update tabulated report if -t is in play.
