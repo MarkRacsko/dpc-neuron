@@ -1,4 +1,5 @@
 import argparse
+from processing_functions import process_target
 
 if __name__ == "__main__":
 
@@ -20,10 +21,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.process:
-        print("processing...")
-    if args.tabulate:
-        print("tabulating results...")
-    if args.pt:
-        print("doing both...")
-    print(args.target)
+    processing: bool = False
+    tabulating: bool = False
+    if args.process or args.pt:
+        processing = True
+    if args.tabulate or args.pt:
+        tabulating = True
+
+    process_target(args.target, processing, tabulating, args.repeat)
