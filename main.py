@@ -1,8 +1,14 @@
 import argparse
-from processing_functions import process_target
+import toml
+from pathlib import Path
+from processing_functions import process_subdir
 
-if __name__ == "__main__":
 
+def main():
+
+    with open("./config.toml", "r") as f:
+        config = toml.load(f)
+    
     target_help = "Path to the folder you want to process. Individual measurement results must be in subfolder of this folder."
     r_help = "If set, process (and/or tabulate) every measurment found in the target folder. Defaults to False, in which case measurements that already have a report associated with them are ignored."
     gr_help = "The following are mutually exclusive flags that govern the program's behaviour. One must be chosen."
@@ -28,4 +34,16 @@ if __name__ == "__main__":
     if args.tabulate or args.pt:
         tabulating = True
 
-    process_target(args.target, processing, tabulating, args.repeat)
+    data_path = Path(args.target)
+    if not data_path.is_dir():
+        print("Target not found or isn't a folder. Exiting.")
+
+    for subdir in data_path.iterdir():
+        if not subdir.is_dir():
+            continue
+      
+        process_subdir(subdir, config, processing, tabulating, args.repeat)
+
+
+if __name__ == "__main__":
+    main()

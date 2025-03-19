@@ -1,0 +1,12 @@
+[input]
+default_target_folder = "./data"
+column_of_interest = "Average"
+agonists = ["PS", "AITC", "Capsaicin"]
+
+[report]
+name = "_result"
+extension = ".xlsx"
+
+[tabulated_report]
+name = "summary"
+extension = ".xlsx"
