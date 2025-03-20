@@ -1,7 +1,6 @@
 [input]
 default_target_folder = "./data"
 column_of_interest = "Average"
-agonists = ["PS", "AITC", "Capsaicin"]
 
 [report]
 name = "_result"
