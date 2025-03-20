@@ -13,5 +13,5 @@ TODO:
     - taking the derivative and working with that may be a better idea, if a cell responds to an agonist, the response is typically (although not necessarily) quick 
     - implement the solution
     - design output report format, implement saving results
-- create config file, it might be better if I replace magic strings like the report name with a configurable input, this is what I'm thinkging of:
-    - [default-settings]: target_folder, report_name, report_extension, column_of_interest, tabulated_report_name, tabulated_report_extension
+~~- create config file, it might be better if I replace magic strings like the report name with a configurable input, this is what I'm thinkging of:~~
+    ~~- [default-settings]: target_folder, report_name, report_extension, column_of_interest, tabulated_report_name, tabulated_report_extension~~

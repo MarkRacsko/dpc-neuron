@@ -1,13 +1,13 @@
 # Ideas
 - Results will be in Excel files, one per measured petri dish / ibidi chamber, all measurements from the same day in a single folder, named after the day of measurement (yyyymmdd).
 - Already processed days should be separated from unprocessed ones, three options:
-    1. Have separate subfolders for them (data/processed and data/new)
-    2. Have the program put a hidden file in folders it has already processed, then have it always scan through the entire data folder and ignore folders that contain a marker file.
-    3. Have a single database file of some description, that stores this information. Added benefit of this one is that it could also store measurement outcomes such as numbers and percentages of TRPM3/TRPA1/TRPV1 positive neurons.
+    1. ~~Have separate subfolders for them (data/processed and data/new)~~ Unnecessary.
+    2. ~~Have the program put a hidden file in folders it has already processed, then have it always scan through the entire data folder and ignore folders that contain a marker file.~~ Went with a version of this, except the marker file is the Excel file that stores the results from that folder.
+    3. ~~Have a single database file of some description, that stores this information. Added benefit of this one is that it could also store measurement outcomes such as numbers and percentages of TRPM3/TRPA1/TRPV1 positive neurons.~~ An overall report that tabulates all results will exist but checking individual report files per folder is more convenient. 
 - When we finish processing a day's measurements, we:
-    1. Move its folder from data/new to data/processed
-    2. Put the marker file its folder
-    3. Update the database (which might just be a .xlsx file)
+    1. ~~Move its folder from data/new to data/processed~~
+    2. Put the marker file in its folder
+    3. ~~Update the database (which might just be a .xlsx file)~~
 - The marker file could also be a report of outcomes, so if this file exists then the folder must have been processed already. Then have separate functionality to tabulate these day by day reports and compile an overall report.
 
 - CLI interface, I'm not bothering with a GUI with this one. Arguments/options:
@@ -19,7 +19,7 @@
 
 - Internal handling of CL arguments:
     1. Check sanity of arguments. Every argument must match one of the available flags or be a valid path. If any argument fails this check or there are more than 1 path-like arguments provided, print an appropriate error message and exit.
-    2. Set flag based boolean variables that govern the program's behaviour and explore the given path, looking for measurement results without an accompanying report or report files if -t is set. Create a list that stores subdir names where unprocessed measurements are detected.
+    2. Set flag based boolean variables that govern the program's behaviour and explore the given path, looking for measurement results without an accompanying report or report files if -t is set. ~~Create a list that stores subdir names where unprocessed measurements are detected.~~ This last bit is unnecessary. Iterating over folders is not going to be the performance bottleneck here.
 
 - Path manipulations using pathlib:
     1. Check that the target location is a directory, exit if not.
@@ -40,9 +40,10 @@
 
 # Planned structure of the project
 What the program should be doing:
-1. Validate command line arguments and exit if they are incorrect
-2. Set boolean variables based on plags, explore given directory. Populate list of subdirs where unprocessed files are found.
-3. Go through these subdirectories and process them one at a time:
+1. Read config file, which will store options that would be inconvenient to have to pass everytime or to make into magic strings/values.
+2. Validate command line arguments and exit if they are incorrect.
+3. Set boolean variables based on plags, explore given directory. Populate list of subdirs where unprocessed files are found.
+4. Go through these subdirectories and process them one at a time:
     1. Make list of all Excel files, create report df
     2. Iterate through the list:
         1. Read in file, select columns of interest ([col for col in input_df.columns if "Average" in col])
@@ -50,3 +51,4 @@ What the program should be doing:
         2. For each column (=cell), perform smoothing, derivation, determine which agonists it responds to, relative amplitude of the response
         3. Update report appropriately
     3. Write out report and update tabulated report if -t is in play.
+5. Write the tabulated summary
