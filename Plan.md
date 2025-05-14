@@ -31,11 +31,12 @@
 - Processing work:
     1. Read events from accompanying event.csv file, create report dataframe
     2. Figure out which type of measurement this is based on the filename
-    3. Determine threshold (baseline + stdev * 3)
-    4. Smooth (mean 5, for now)
-    5. Take the derivative
-    6. For each event period, determine if the cell reacted to that event (=agonist), if so, determine amplitude
-    7. Update the report appropriately
+    3. Correct photobleaching in both F380 and F340 data, calculate ratio
+    4. Determine threshold (baseline + stdev * 3)
+    5. Smooth (mean 5, for now)
+    6. Take the derivative
+    7. For each event period, determine if the cell reacted to that event (=agonist), if so, determine amplitude
+    8. Update the report appropriately
 
 
 # Planned structure of the project
@@ -46,9 +47,15 @@ What the program should be doing:
 4. Go through these subdirectories and process them one at a time:
     1. Make list of all Excel files, create report df
     2. Iterate through the list:
-        1. Read in file, select columns of interest ([col for col in input_df.columns if "Average" in col])
+        1. Read in file, both the F340 and F380 sheets
         2. Parse filename to determine experimental condition
-        2. For each column (=cell), perform smoothing, derivation, determine which agonists it responds to, relative amplitude of the response
-        3. Update report appropriately
+        3. Convert to numpy, transpose, and separete the data into Time, Background, Cells (**Both sheets**)
+        4. Substract background (this column will be named "Background" in all files)
+        5. For each column (=cell):
+            1. Correct photobleaching (F340 and F380 separately)
+            2. Calculate ratio
+            3. Smooth (mean 5)
+            4. Determine which agonists it responds to, relative amplitude of the response
+        6. Update report appropriately
     3. Write out report and update tabulated report if -t is in play.
 5. Write the tabulated summary

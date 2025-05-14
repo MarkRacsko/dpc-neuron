@@ -11,17 +11,48 @@ def process_subdir(subdir: Path, config: dict, process: bool, tabulate: bool, re
     
     measurement_files = [f for f in subdir.glob("*.xlsx") if f != report_path]
     event_file = subdir / f"{subdir}_events.csv"
-    event_frames, events = parse_events(event_file)
+    event_frames, event_names = parse_events(event_file)
+    agonist_names = filter_events(event_names)
+    event_slices = create_event_slices(event_frames)
+    agonist_slices: dict[str, slice] = {k: v for k, v in zip(agonist_names, event_slices)}
+    output_columns = ["cell_ID", "condition"]
+    for agonist in agonist_names:
+        output_columns.append(agonist + "_reaction")
+        output_columns.append(agonist + "_amp")
 
     if process:
-        report = pd.DataFrame(columns=filter_events(events))
+        report = pd.DataFrame(columns=output_columns)
         for file in measurement_files:
-            result = process_file(file, event_frames, events)
-            report = pd.concat([report, result])
+            data = pd.read_excel(file, sheet_name="ratio").to_numpy()
+            data = np.transpose(data)
+            x_data, cell_data = data[0], data[1:]
+            cell_ID: int = 0
+            condition = 0 # this is intended to represent the experimental condition for this file
+            # to be implemented...
+            output_df = pd.DataFrame(columns=output_columns)
+            for index, trace in enumerate(cell_data):
+                # I want to vectorize all of this but let's just get it working for now
+                cell_ID += 1
+                baseline = trace[:60].mean()
+                std = trace[:60].std()
+                threshold = baseline + std * 2 # this is idea A from my plan, probably not the best
+                result = [cell_ID, condition]
+                for agonist, time_window in agonist_slices.items():
+                    reaction = bool(np.any(trace[time_window] > threshold)) # the bool conversion may not be necessary
+                    amplitude = trace[time_window].max() - baseline
+                    result.append(reaction)
+                    result.append(amplitude)
+                output_df.loc[len(output_df)] = result # appending one row at a time to the end of the df. pd.concat()
+                # would require the creation of a new df jjust to hold this one row, which I feel would be pointless
+
+
+
+
         report.to_excel(report_path)
 
 
-def process_file(file: Path, event_frames: list[int], events: list[str]) -> pd.DataFrame:
+def process_file(file: Path, event_slices: list[slice], events: list[str]) -> pd.DataFrame:
+    # To be finished. For now I just want the thing to work, making it prettier can wait.
     data = pd.read_excel(file, sheet_name="ratio").to_numpy()
     data = np.transpose(data)
     x_data, cell_data = data[0], data[1:]
@@ -59,6 +90,23 @@ def filter_events(events: list[str]) -> list[str]:
     """
     return [s for s in events if s.lower() not in [" ", "wash", "high k+"]]
 
+def create_event_slices(event_list: list[int]) -> list[slice]:
+    """Translates the list of timepoints when events happened into a list of slice objects that represent this
+    information as time windows. The output is intended to be used to access the relevant parts of the calcium trace data.
+
+    Args:
+        event_list (list[int]): The events as returned by parse_events().
+
+    Returns:
+        list[slice]: A list of slices of the form [agonist_start_time:agonist_end_time] where agonist refers to the
+        compound added in this particular time window to the cells being measured.
+    """
+    slices: list[slice] = []
+
+    for i in range(1, len(event_list)):
+        slices.append(slice(event_list[i-1], event_list[i]))
+
+    return slices
 
 def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
     """This function performs a sliding window type smoothing on an array representing a Ca trace.
