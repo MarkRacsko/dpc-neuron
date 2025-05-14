@@ -28,6 +28,13 @@
         2. Check if the report exists, continue if it does and -r is NOT set.
         3. Process Excel files of measurements found there and make the report. Add it to an overall report if -t or -pt is active.
 
+- Structure of the Excel files produced from ImageJ measurement results:
+    - sheets named F380 and F340
+    - First column is Time
+    - Second column is Background
+    - Rest of the columns are measurements from cells
+    - Column names reflect cell type
+
 - Processing work:
     1. Read events from accompanying event.csv file, create report dataframe
     2. Figure out which type of measurement this is based on the filename
@@ -38,6 +45,10 @@
     7. For each event period, determine if the cell reacted to that event (=agonist), if so, determine amplitude
     8. Update the report appropriately
 
+- Detecting reactions:
+    A. any value above baseline mean + 2*std in the given window
+    B. any value above mean of last 10 values of previous window + 2*std of baseline
+    C. use derivative and baseline mean + 2*std, because responses are usually rapid (if perfusion is good)
 
 # Planned structure of the project
 What the program should be doing:
@@ -45,17 +56,19 @@ What the program should be doing:
 2. Validate command line arguments and exit if they are incorrect.
 3. Set boolean variables based on plags, explore given directory. Populate list of subdirs where unprocessed files are found.
 4. Go through these subdirectories and process them one at a time:
+    0. Check if result file exits, move on to next subdir if it does and -r flag is not set
     1. Make list of all Excel files, create report df
     2. Iterate through the list:
         1. Read in file, both the F340 and F380 sheets
         2. Parse filename to determine experimental condition
         3. Convert to numpy, transpose, and separete the data into Time, Background, Cells (**Both sheets**)
         4. Substract background (this column will be named "Background" in all files)
-        5. For each column (=cell):
+        5. Split data into neuron-like cells and DPC-like cells
+        6. For each column (=cell):
             1. Correct photobleaching (F340 and F380 separately)
             2. Calculate ratio
             3. Smooth (mean 5)
             4. Determine which agonists it responds to, relative amplitude of the response
-        6. Update report appropriately
+        7. Update report appropriately
     3. Write out report and update tabulated report if -t is in play.
 5. Write the tabulated summary
