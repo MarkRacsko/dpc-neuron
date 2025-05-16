@@ -37,6 +37,7 @@ def main():
     data_path = Path(args.target)
     if not data_path.is_dir():
         print("Target not found or isn't a folder. Exiting.")
+        exit()
 
     for subdir in data_path.iterdir():
         if not subdir.is_dir():

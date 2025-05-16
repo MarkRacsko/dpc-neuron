@@ -5,7 +5,7 @@ import numpy as np
 import math
 
 def process_subdir(subdir: Path, config: dict, process: bool, tabulate: bool, repeat: bool):
-    report_path = subdir / f"{subdir}_report.xlsx"
+    report_path = subdir / f"{subdir}{config["report"]["name"]}{config["report"]["extension"]}"
     if report_path.exists() and not repeat:
         return
     
@@ -15,38 +15,60 @@ def process_subdir(subdir: Path, config: dict, process: bool, tabulate: bool, re
     agonist_names = filter_events(event_names)
     event_slices = create_event_slices(event_frames)
     agonist_slices: dict[str, slice] = {k: v for k, v in zip(agonist_names, event_slices)}
-    output_columns = ["cell_ID", "condition"]
+    output_columns = ["cell_ID", "condition", "cell_type"]
     for agonist in agonist_names:
         output_columns.append(agonist + "_reaction")
         output_columns.append(agonist + "_amp")
 
     if process:
         report = pd.DataFrame(columns=output_columns)
+        cell_ID: int = 0
         for file in measurement_files:
-            data = pd.read_excel(file, sheet_name="ratio").to_numpy()
-            data = np.transpose(data)
-            x_data, cell_data = data[0], data[1:]
-            cell_ID: int = 0
-            condition = 0 # this is intended to represent the experimental condition for this file
-            # to be implemented...
-            output_df = pd.DataFrame(columns=output_columns)
-            for index, trace in enumerate(cell_data):
-                # I want to vectorize all of this but let's just get it working for now
-                cell_ID += 1
-                baseline = trace[:60].mean()
-                std = trace[:60].std()
-                threshold = baseline + std * 2 # this is idea A from my plan, probably not the best
-                result = [cell_ID, condition]
-                for agonist, time_window in agonist_slices.items():
-                    reaction = bool(np.any(trace[time_window] > threshold)) # the bool conversion may not be necessary
-                    amplitude = trace[time_window].max() - baseline
-                    result.append(reaction)
-                    result.append(amplitude)
-                output_df.loc[len(output_df)] = result # appending one row at a time to the end of the df. pd.concat()
-                # would require the creation of a new df jjust to hold this one row, which I feel would be pointless
-
-
-
+            # read in 340 and 380 data separately
+            F340_data = pd.read_excel(file, sheet_name="F340")
+            F380_data = pd.read_excel(file, sheet_name="F380")
+            cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
+            
+            # split the data
+            x_data, bgr_380, cells_380 = F380_data["Time"].to_numpy(), F380_data["Background"].to_numpy(), F380_data[cell_cols].to_numpy()
+            bgr_340, cells_340 = F340_data["Background"].to_numpy(), F340_data[cell_cols].to_numpy()
+            
+            # turn time and background into 2d arrays with one column each because this shape is needed for linalg.lstsq
+            x_data, bgr_340, bgr_380 = x_data[:, np.newaxis], bgr_340[:, np.newaxis], bgr_380[:, np.newaxis]
+            
+            # substract backgrounds
+            cells_340 = cells_340 - bgr_340
+            cells_380 = cells_380 - bgr_380
+            
+            # photobleaching correction
+            matrix = np.hstack((np.ones_like(x_data), x_data))
+            coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
+            coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
+            cells_340 = cells_340 - (x_data * coeffs_340[1])
+            cells_380 = cells_380 - (x_data * coeffs_380[1])
+            
+            ratios = np.transpose(cells_340 / cells_380)
+            
+            # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
+            # be "neuron + DPC {number}.xlsx"
+            condition = "N" if "only" in file.name else "N+D"
+            
+            baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+            baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+            thresholds = baseline_means + 2*baseline_stdevs
+            for agonist, time_window in agonist_slices.items():
+                if agonist == "baseline":
+                    continue
+                amplitudes = ratios[time_window].max(axis=0, keepdims=True)
+                reactions = np.where(amplitudes > thresholds, True, False)
+                report[agonist + "_reaction"] = reactions
+                report[agonist + "_amp"] = amplitudes
+            
+            number_of_cells = ratios.shape[0]
+            report["cell_ID"] = [x for x in range(cell_ID, number_of_cells)]
+            cell_ID += number_of_cells
+            report["condition"] = [condition for _ in range(number_of_cells)]
+            report["cell_type"] = cell_cols
 
         report.to_excel(report_path)
 

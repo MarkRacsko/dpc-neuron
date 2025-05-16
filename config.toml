@@ -1,6 +1,7 @@
 [input]
 default_target_folder = "./data"
-column_of_interest = "Average"
+group1 = "only"
+group2 = "+"
 
 [report]
 name = "_result"

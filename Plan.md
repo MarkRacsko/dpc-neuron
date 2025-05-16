@@ -10,6 +10,11 @@
     3. ~~Update the database (which might just be a .xlsx file)~~
 - The marker file could also be a report of outcomes, so if this file exists then the folder must have been processed already. Then have separate functionality to tabulate these day by day reports and compile an overall report.
 
+- Config file structure:
+    1. input section: for input related options such as the default input folder path and the naming convention of experimental groups. These will be used to identify which file is what so the experimental conditions can be included in the report. Regex should be used, not just keywords like "only".
+    2. report section: this is for the individual measurement day outputs
+    3. tabulated_report: this is for the overall compilation of results
+
 - CLI interface, I'm not bothering with a GUI with this one. Arguments/options:
     -p / --process: Process measurements found in subfolders of the given folder. Ignores measurements for whom a report already exists.
     -t / --tabulate: Compile an overall report from measurement reports found in subfolders of the given folder. Can be done at the same time as -p, in this case the program will process everything then make the report. Ideally in the latter case we make the report on the fly, instead of reading in the report files after writing them.
@@ -61,14 +66,16 @@ What the program should be doing:
     2. Iterate through the list:
         1. Read in file, both the F340 and F380 sheets
         2. Parse filename to determine experimental condition
-        3. Convert to numpy, transpose, and separete the data into Time, Background, Cells (**Both sheets**)
-        4. Substract background (this column will be named "Background" in all files)
-        5. Split data into neuron-like cells and DPC-like cells
-        6. For each column (=cell):
+        3. Separete the data into Time, Background, Cells (**Both sheets**)
+        4. Save cell type information (ie column names) before conversion to numpy
+        5. Convert to numpy and transpose because I prefer rows = cells
+        6. Substract background (this column will be named "Background" in all files)
+        7. For each column (=cell):
             1. Correct photobleaching (F340 and F380 separately)
             2. Calculate ratio
             3. Smooth (mean 5)
             4. Determine which agonists it responds to, relative amplitude of the response
-        7. Update report appropriately
+        
+        8. Update report appropriately
     3. Write out report and update tabulated report if -t is in play.
 5. Write the tabulated summary
