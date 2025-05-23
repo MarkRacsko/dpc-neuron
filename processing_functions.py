@@ -8,90 +8,36 @@ def process_subdir(subdir: Path, config: dict, process: bool, tabulate: bool, re
     report_path = subdir / f"{subdir}{config["report"]["name"]}{config["report"]["extension"]}"
     if report_path.exists() and not repeat:
         return
-    
-    measurement_files = [f for f in subdir.glob("*.xlsx") if f != report_path]
-    event_file = subdir / f"{subdir}_events.csv"
-    event_frames, event_names = parse_events(event_file)
-    agonist_names = filter_events(event_names)
-    event_slices = create_event_slices(event_frames)
-    agonist_slices: dict[str, slice] = {k: v for k, v in zip(agonist_names, event_slices)}
-    output_columns = ["cell_ID", "condition", "cell_type"]
-    for agonist in agonist_names:
-        output_columns.append(agonist + "_reaction")
-        output_columns.append(agonist + "_amp")
 
     if process:
-        report = pd.DataFrame(columns=output_columns)
-        cell_ID: int = 0
-        for file in measurement_files:
-            file_result = pd.DataFrame(columns=output_columns)
-            # read in 340 and 380 data separately
-            F340_data = pd.read_excel(file, sheet_name="F340")
-            F380_data = pd.read_excel(file, sheet_name="F380")
-            cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
-            
-            # split the data
-            x_data, bgr_380, cells_380 = F380_data["Time"].to_numpy(), F380_data["Background"].to_numpy(), F380_data[cell_cols].to_numpy()
-            bgr_340, cells_340 = F340_data["Background"].to_numpy(), F340_data[cell_cols].to_numpy()
-            
-            # turn time and background into 2d arrays with one column each because this shape is needed for linalg.lstsq
-            x_data, bgr_340, bgr_380 = x_data[:, np.newaxis], bgr_340[:, np.newaxis], bgr_380[:, np.newaxis]
-            
-            # substract backgrounds
-            cells_340 = cells_340 - bgr_340
-            cells_380 = cells_380 - bgr_380
-            
-            # photobleaching correction
-            matrix = np.hstack((np.ones_like(x_data), x_data))
-            coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
-            coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
-            cells_340 = cells_340 - (x_data * coeffs_340[1])
-            cells_380 = cells_380 - (x_data * coeffs_380[1])
-            
-            ratios = np.transpose(cells_340 / cells_380)
-            
-            # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
-            # be "neuron + DPC {number}.xlsx"
-            condition = "N" if "only" in file.name else "N+D"
-            
-            baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
-            baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
-            thresholds = baseline_means + 2*baseline_stdevs
-            for agonist, time_window in agonist_slices.items():
-                if agonist == "baseline":
-                    continue
-                amplitudes = ratios[time_window].max(axis=0, keepdims=True)
-                reactions = np.where(amplitudes > thresholds, True, False)
-                file_result[agonist + "_reaction"] = reactions
-                file_result[agonist + "_amp"] = amplitudes
-            
-            number_of_cells = ratios.shape[0]
-            file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
-            cell_ID += number_of_cells
-            file_result["condition"] = [condition for _ in range(number_of_cells)]
-             # in the Excel files, columns will be called N1, N2, N3... for neurons and DPC1, DPC2, DPC3... for DPCs
-            cell_cols = [c.strip("1234567890") for c in cell_cols]
-            file_result["cell_type"] = cell_cols
-
-            report = pd.concat([report, file_result])
+        report = make_report(subdir, report_path, method=config["input"]["method"])
         report.to_excel(report_path)
 
 
-def parse_events(file: Path) -> tuple[list[int], list[str]]:
+def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
     """Reads in the event file that describes what happened during the measurement in question.
 
     Args:
         file (Path): The pathlib.Path object representing the event file. Must be csv.
 
     Returns:
-        tuple[list[int], list[str]]: The first list is of frame numbers where events occured and the second is of string
-        descriptions of what happened (what agonist was used there).
+        dict[str, slice[int]: This dictionary maps the names of agonists to the time windows where they were applied.
+        list[str]: The list of agonist related column names for the report DataFrame.
     """
+    file = subdir / f"{subdir}_events.csv"
     events_df = pd.read_csv(file, header=0)
 
-    frames, events = list(events_df["frame"]), list(events_df["agonist"])
+    event_times, event_names = list(events_df["frame"]), list(events_df["agonist"])
+    agonist_names = filter_events(event_names)
+    event_slices = create_event_slices(event_times)
+    agonist_slices: dict[str, slice[int]] = {k: v for k, v in zip(agonist_names, event_slices)}
     
-    return frames, events
+    agonist_cols = []
+    for agonist in agonist_names:
+        agonist_cols.append(agonist + "_reaction")
+        agonist_cols.append(agonist + "_amp")
+    
+    return agonist_slices, agonist_cols
 
 
 def filter_events(events: list[str]) -> list[str]:
@@ -106,7 +52,7 @@ def filter_events(events: list[str]) -> list[str]:
     """
     return [s for s in events if s.lower() not in [" ", "wash", "high k+"]]
 
-def create_event_slices(event_list: list[int]) -> list[slice]:
+def create_event_slices(event_list: list[int]) -> list[slice[int]]:
     """Translates the list of timepoints when events happened into a list of slice objects that represent this
     information as time windows. The output is intended to be used to access the relevant parts of the calcium trace data.
 
@@ -117,7 +63,7 @@ def create_event_slices(event_list: list[int]) -> list[slice]:
         list[slice]: A list of slices of the form [agonist_start_time:agonist_end_time] where agonist refers to the
         compound added in this particular time window to the cells being measured.
     """
-    slices: list[slice] = []
+    slices: list[slice[int]] = []
 
     for i in range(1, len(event_list)):
         slices.append(slice(event_list[i-1], event_list[i]))
@@ -170,7 +116,124 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
 
     return out_array
 
-def make_report():
+def make_report(subdir: Path, report_path: Path, method: str) -> pd.DataFrame:
     """This meant to encapsulate everything currently under the if process: block in process_subdir().
     """
-    pass
+    if method not in ["baseline", "previous", "derivative"]:
+        raise NotImplementedError("The only reaction testing methods implemented are \"baseline\", \"previous\", and " \
+        "\"derivative\". See README.md")
+    
+    measurement_files = [f for f in subdir.glob("*.xlsx") if f != report_path]
+    
+    agonist_slices, agonist_columns = parse_events(subdir)
+    output_columns = ["cell_ID", "condition", "cell_type"] + agonist_columns
+
+    report = pd.DataFrame(columns=output_columns)
+    cell_ID: int = 0
+    for file in measurement_files:
+        file_result = pd.DataFrame(columns=output_columns)
+        # read in 340 and 380 data separately
+        F340_data = pd.read_excel(file, sheet_name="F340")
+        F380_data = pd.read_excel(file, sheet_name="F380")
+        cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
+        
+        # split the data
+        x_data, bgr_380, cells_380 = F380_data["Time"].to_numpy(), F380_data["Background"].to_numpy(), F380_data[cell_cols].to_numpy()
+        bgr_340, cells_340 = F340_data["Background"].to_numpy(), F340_data[cell_cols].to_numpy()
+        
+        # turn time and background into 2d arrays with one column each because this shape is needed for linalg.lstsq
+        x_data, bgr_340, bgr_380 = x_data[:, np.newaxis], bgr_340[:, np.newaxis], bgr_380[:, np.newaxis]
+        
+        # substract backgrounds
+        cells_340 = cells_340 - bgr_340
+        cells_380 = cells_380 - bgr_380
+        
+        # smoothing should probably go here
+        pass
+        # photobleaching correction
+        matrix = np.hstack((np.ones_like(x_data), x_data))
+        coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
+        coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
+        cells_340 = cells_340 - (x_data * coeffs_340[1])
+        cells_380 = cells_380 - (x_data * coeffs_380[1])
+        
+        # I'm working with Fura2 so the actual data of interest is the ration between emissions at 340 and 380 nm.
+        ratios = np.transpose(cells_340 / cells_380)
+        
+        # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
+        # be "neuron + DPC {number}.xlsx"
+        condition = "N" if "only" in file.name else "N+D"
+        
+        baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+        baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+        thresholds = baseline_means + 2*baseline_stdevs
+        
+        if method == "derivative":
+            derivs = np.gradient(ratios, axis=0)
+            deriv_means = derivs[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+            deriv_stdevs = derivs[agonist_slices["baseline"]].std(axis=0, mean=deriv_means, keepdims=True)
+            thresholds = deriv_means + 2*deriv_stdevs
+        
+        for agonist, time_window in agonist_slices.items():
+            if agonist == "baseline":
+                continue
+            if method == "previous":
+                thresholds = ratios[time_window.start - 1] + 2*baseline_stdevs
+            amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
+            if method != "derivative":
+                reactions = np.where(amplitudes > thresholds, True, False)
+            else:
+                reactions = np.where(derivs[time_window] > thresholds, True, False) # type: ignore
+            file_result[agonist + "_reaction"] = reactions
+            file_result[agonist + "_amp"] = amplitudes
+        
+        number_of_cells = ratios.shape[0]
+        file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
+        cell_ID += number_of_cells
+        file_result["condition"] = [condition for _ in range(number_of_cells)]
+            # in the Excel files, columns will be called N1, N2, N3... for neurons and DPC1, DPC2, DPC3... for DPCs
+        cell_cols = [c.strip("1234567890") for c in cell_cols]
+        file_result["cell_type"] = cell_cols
+
+        report = pd.concat([report, file_result])
+    return report
+
+def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
+    baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+    baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+    thresholds = baseline_means + 2*baseline_stdevs
+    
+    for agonist, time_window in agonist_slices.items():
+        if agonist == "baseline":
+            continue
+        amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
+        reactions = np.where(amplitudes > thresholds, True, False)
+        file_result[agonist + "_reaction"] = reactions
+        file_result[agonist + "_amp"] = amplitudes
+
+def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
+    baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+    baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+
+    for agonist, time_window in agonist_slices.items():
+        if agonist == "baseline":
+            continue
+        thresholds = ratios[time_window.start - 1] + 2*baseline_stdevs
+        amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
+        reactions = np.where(amplitudes > thresholds, True, False)
+        file_result[agonist + "_reaction"] = reactions
+        file_result[agonist + "_amp"] = amplitudes
+
+def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
+    derivs = np.gradient(ratios, axis=0)
+    baseline_means = derivs[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+    baseline_stdevs = derivs[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+    thresholds = baseline_means + 2*baseline_stdevs
+    
+    for agonist, time_window in agonist_slices.items():
+        if agonist == "baseline":
+            continue
+        amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
+        reactions = np.where(derivs[time_window] > thresholds, True, False)
+        file_result[agonist + "_reaction"] = reactions
+        file_result[agonist + "_amp"] = amplitudes
