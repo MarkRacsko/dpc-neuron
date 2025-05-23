@@ -24,6 +24,7 @@ def process_subdir(subdir: Path, config: dict, process: bool, tabulate: bool, re
         report = pd.DataFrame(columns=output_columns)
         cell_ID: int = 0
         for file in measurement_files:
+            file_result = pd.DataFrame(columns=output_columns)
             # read in 340 and 380 data separately
             F340_data = pd.read_excel(file, sheet_name="F340")
             F380_data = pd.read_excel(file, sheet_name="F380")
@@ -61,26 +62,19 @@ def process_subdir(subdir: Path, config: dict, process: bool, tabulate: bool, re
                     continue
                 amplitudes = ratios[time_window].max(axis=0, keepdims=True)
                 reactions = np.where(amplitudes > thresholds, True, False)
-                report[agonist + "_reaction"] = reactions
-                report[agonist + "_amp"] = amplitudes
+                file_result[agonist + "_reaction"] = reactions
+                file_result[agonist + "_amp"] = amplitudes
             
             number_of_cells = ratios.shape[0]
-            report["cell_ID"] = [x for x in range(cell_ID, number_of_cells)]
+            file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
             cell_ID += number_of_cells
-            report["condition"] = [condition for _ in range(number_of_cells)]
-            report["cell_type"] = cell_cols
+            file_result["condition"] = [condition for _ in range(number_of_cells)]
+             # in the Excel files, columns will be called N1, N2, N3... for neurons and DPC1, DPC2, DPC3... for DPCs
+            cell_cols = [c.strip("1234567890") for c in cell_cols]
+            file_result["cell_type"] = cell_cols
 
+            report = pd.concat([report, file_result])
         report.to_excel(report_path)
-
-
-def process_file(file: Path, event_slices: list[slice], events: list[str]) -> pd.DataFrame:
-    # To be finished. For now I just want the thing to work, making it prettier can wait.
-    data = pd.read_excel(file, sheet_name="ratio").to_numpy()
-    data = np.transpose(data)
-    x_data, cell_data = data[0], data[1:]
-    result = pd.DataFrame()
-    ... # additional steps go here
-    return result
 
 
 def parse_events(file: Path) -> tuple[list[int], list[str]]:
@@ -175,3 +169,8 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
             out_array[index] = array[index - half_size : index + half_size + 1].mean()
 
     return out_array
+
+def make_report():
+    """This meant to encapsulate everything currently under the if process: block in process_subdir().
+    """
+    pass
