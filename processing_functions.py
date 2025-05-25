@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import math
+from matplotlib import figure
 
 def process_subdir(subdir: Path, report_path: Path, method: str, process: bool, tabulate: bool, graphs: bool):
 
@@ -38,7 +39,6 @@ def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
         agonist_cols.append(agonist + "_amp")
     
     return agonist_slices, agonist_cols
-
 
 def filter_events(events: list[str]) -> list[str]:
     """This is meant to remove event names which should not be included in the report, such as washouts and high 
@@ -116,7 +116,7 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
 
     return out_array
 
-def make_report(subdir: Path, report_path: Path, method: str, make_graphs: bool) -> pd.DataFrame:
+def make_report(subdir: Path, report_path: Path, method: str, graphs: bool) -> pd.DataFrame:
     """This meant to encapsulate everything currently under the if process: block in process_subdir().
     """
     
@@ -183,6 +183,14 @@ def make_report(subdir: Path, report_path: Path, method: str, make_graphs: bool)
         file_result["cell_type"] = cell_cols
 
         report = pd.concat([report, file_result])
+
+        if graphs:
+            graphing_path: Path = Path(file.stem)
+            Path.mkdir(graphing_path)
+
+            reaction_cols = [col for col in file_result.columns if "_reaction" in col]
+            make_graphs(x_data.flatten(), ratios, agonist_slices, file_result[reaction_cols], graphing_path)
+
     return report
 
 def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
@@ -224,6 +232,49 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         reactions = np.where(derivs[time_window] > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions
         file_result[agonist + "_amp"] = amplitudes
+
+def make_graphs(x_data: np.ndarray, traces: np.ndarray, treatments: dict[str, slice[int]], reactions: pd.DataFrame, 
+                save_dir: Path) -> None:
+    """Creates line graphs for each cell in this particular measurement file. Is called from within make_report()
+    because it needs the cell trace data and that funtion only returns the report DataFrame.
+
+    Args:
+        x_data (np.ndarray): The time values as a 1d array.
+        traces (np.ndarray): The ratio data to be plotted.
+        treatments (dict[str, slice[int]]): The dictionary describing what agonist was used between what time points.
+        Called agonist_slices elsewhere.
+        reactions (pd.DataFrame): Those columns of the file result df that contain the reaction True/False values for
+        each agonist used.
+        save_dir (Path): The newly created directory where the graphs are supposed to be saved.
+    """
+    majors = [x for x in range(0, len(x_data) + 1, 60)]
+    major_labels = [str(x//60) for x in majors]
+    for i, y_data in enumerate(traces, start=0):
+        fig = figure.Figure(figsize=(10, 5))
+        ax = fig.subplots(1, 1)
+
+        ax.plot(x_data, y_data)
+        ax.set_xticks(majors, labels=major_labels, minor=False)
+        ax.set_xlabel("Time (min)")
+        ax.set_ylabel("Ratio")
+
+        ymin, ymax = ax.get_ylim()
+        agonist_label_y = ymin - (ymax - ymin) * 0.2
+        reaction_label_y = ymin - (ymax - ymin) * 0.3
+        for name, time_slice in treatments.items():
+            ax.axvline(x=time_slice.start, c="black")
+            ax.axvline(x=time_slice.stop, c="black")
+            ax.text(x=time_slice.start, y=agonist_label_y, s=name)
+            # this next line is supposed to print TRUE under a given agonist name if the program thinks that cell reacts
+            # to that agonist and FALSE otherwise
+            ax.text(x=time_slice.start, y=reaction_label_y, s=str(reactions.at[i, f"{name}_reaction"]).upper())
+
+        # Cell numbering is 0 indexed on purpose!
+        fig.suptitle(f"Cell no. {i}")
+        fig.tight_layout()
+        fig.savefig(save_dir / f"Cell no. {i}", dpi=300)
+        fig.clf()
+        print(f"Done with {i}")
 
 # This would be the ugly solution
 # baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
