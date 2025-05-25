@@ -4,15 +4,15 @@ import pandas as pd
 import numpy as np
 import math
 
-def process_subdir(subdir: Path, config: dict, process: bool, tabulate: bool, repeat: bool):
-    report_path = subdir / f"{subdir}{config["report"]["name"]}{config["report"]["extension"]}"
-    if report_path.exists() and not repeat:
-        return
+def process_subdir(subdir: Path, report_path: Path, method: str, process: bool, tabulate: bool, graphs: bool):
 
     if process:
-        report = make_report(subdir, report_path, method=config["input"]["method"])
+        report = make_report(subdir, report_path, method, graphs)
         report.to_excel(report_path)
 
+    if tabulate:
+        # to be implemented
+        pass
 
 def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
     """Reads in the event file that describes what happened during the measurement in question.
@@ -116,12 +116,9 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
 
     return out_array
 
-def make_report(subdir: Path, report_path: Path, method: str) -> pd.DataFrame:
+def make_report(subdir: Path, report_path: Path, method: str, make_graphs: bool) -> pd.DataFrame:
     """This meant to encapsulate everything currently under the if process: block in process_subdir().
     """
-    if method not in ["baseline", "previous", "derivative"]:
-        raise NotImplementedError("The only reaction testing methods implemented are \"baseline\", \"previous\", and " \
-        "\"derivative\". See README.md")
     
     measurement_files = [f for f in subdir.glob("*.xlsx") if f != report_path]
     
@@ -149,7 +146,9 @@ def make_report(subdir: Path, report_path: Path, method: str) -> pd.DataFrame:
         cells_380 = cells_380 - bgr_380
         
         # smoothing should probably go here
-        pass
+        cells_340 = np.apply_along_axis(smooth, 1, cells_340)
+        cells_380 = np.apply_along_axis(smooth, 1, cells_380)
+
         # photobleaching correction
         matrix = np.hstack((np.ones_like(x_data), x_data))
         coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
@@ -157,35 +156,23 @@ def make_report(subdir: Path, report_path: Path, method: str) -> pd.DataFrame:
         cells_340 = cells_340 - (x_data * coeffs_340[1])
         cells_380 = cells_380 - (x_data * coeffs_380[1])
         
-        # I'm working with Fura2 so the actual data of interest is the ration between emissions at 340 and 380 nm.
+        # I'm working with Fura2 so the actual data of interest is the ratios between emissions at 340 and 380 nm.
         ratios = np.transpose(cells_340 / cells_380)
         
         # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
         # be "neuron + DPC {number}.xlsx"
         condition = "N" if "only" in file.name else "N+D"
         
-        baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
-        baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
-        thresholds = baseline_means + 2*baseline_stdevs
-        
-        if method == "derivative":
-            derivs = np.gradient(ratios, axis=0)
-            deriv_means = derivs[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
-            deriv_stdevs = derivs[agonist_slices["baseline"]].std(axis=0, mean=deriv_means, keepdims=True)
-            thresholds = deriv_means + 2*deriv_stdevs
-        
-        for agonist, time_window in agonist_slices.items():
-            if agonist == "baseline":
-                continue
-            if method == "previous":
-                thresholds = ratios[time_window.start - 1] + 2*baseline_stdevs
-            amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
-            if method != "derivative":
-                reactions = np.where(amplitudes > thresholds, True, False)
-            else:
-                reactions = np.where(derivs[time_window] > thresholds, True, False) # type: ignore
-            file_result[agonist + "_reaction"] = reactions
-            file_result[agonist + "_amp"] = amplitudes
+        # determine if cells react to each of the agonists, and how big the response amplitudes are
+        # no default case because we already have a guard clause to make sure these 3 are the only options, which we
+        # do in main before reading any measurement data from disk, so if the program's gonna crash it does so quickly
+        match method:
+            case "baseline":
+                baseline_threshold(ratios, agonist_slices, file_result)
+            case "previous":
+                previous_threshold(ratios, agonist_slices, file_result)
+            case "derivative":
+                derivate_threshold(ratios, agonist_slices, file_result)
         
         number_of_cells = ratios.shape[0]
         file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
@@ -237,3 +224,27 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         reactions = np.where(derivs[time_window] > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions
         file_result[agonist + "_amp"] = amplitudes
+
+# This would be the ugly solution
+# baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+# baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+# thresholds = baseline_means + 2*baseline_stdevs
+
+# if method == "derivative":
+    # derivs = np.gradient(ratios, axis=0)
+    # deriv_means = derivs[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
+    # deriv_stdevs = derivs[agonist_slices["baseline"]].std(axis=0, mean=deriv_means, keepdims=True)
+    # thresholds = deriv_means + 2*deriv_stdevs
+
+# for agonist, time_window in agonist_slices.items():
+#     if agonist == "baseline":
+#         continue
+#     if method == "previous":
+#         thresholds = ratios[time_window.start - 1] + 2*baseline_stdevs
+#     amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
+#     if method != "derivative":
+#         reactions = np.where(amplitudes > thresholds, True, False)
+#     else:
+#         reactions = np.where(derivs[time_window] > thresholds, True, False) # type: ignore
+#     file_result[agonist + "_reaction"] = reactions
+#     file_result[agonist + "_amp"] = amplitudes
