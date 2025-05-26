@@ -25,7 +25,7 @@ def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
         dict[str, slice[int]: This dictionary maps the names of agonists to the time windows where they were applied.
         list[str]: The list of agonist related column names for the report DataFrame.
     """
-    file = subdir / f"{subdir}_events.csv"
+    file = subdir / "events.csv"
     events_df = pd.read_csv(file, header=0)
 
     event_times, event_names = list(events_df["frame"]), list(events_df["agonist"])
@@ -35,14 +35,16 @@ def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
     
     agonist_cols = []
     for agonist in agonist_names:
+        if agonist == "baseline":
+            continue
         agonist_cols.append(agonist + "_reaction")
         agonist_cols.append(agonist + "_amp")
     
     return agonist_slices, agonist_cols
 
 def filter_events(events: list[str]) -> list[str]:
-    """This is meant to remove event names which should not be included in the report, such as washouts and high 
-    potassium, without making the DataFrame creating line an eyesore.
+    """This is meant to remove event names which should not be included in the report, such as washouts and the end of 
+    the measurement, without making the DataFrame creating line an eyesore.
 
     Args:
         events (list[str]): The event list.
@@ -50,7 +52,7 @@ def filter_events(events: list[str]) -> list[str]:
     Returns:
         list[str]: The same list with undesirable elements removed.
     """
-    return [s for s in events if s.lower() not in [" ", "wash", "high k+"]]
+    return [s for s in events if s.lower() not in [" ", "wash", "END"]]
 
 def create_event_slices(event_list: list[int]) -> list[slice[int]]:
     """Translates the list of timepoints when events happened into a list of slice objects that represent this
@@ -207,17 +209,17 @@ def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_amp"] = amplitudes
 
 def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
-    baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
-    baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+    baseline_means = ratios[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
+    baseline_stdevs = ratios[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
 
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        thresholds = ratios[time_window.start - 1] + 2*baseline_stdevs
-        amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
+        thresholds = ratios[:,time_window.start - 1] + 2*baseline_stdevs.flatten() # hotfix, need to think more
+        amplitudes = ratios[:,time_window].max(axis=1, keepdims=False) - baseline_means.flatten()
         reactions = np.where(amplitudes > thresholds, True, False)
-        file_result[agonist + "_reaction"] = reactions
-        file_result[agonist + "_amp"] = amplitudes
+        file_result[agonist + "_reaction"] = reactions.flatten()
+        file_result[agonist + "_amp"] = amplitudes.flatten()
 
 def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
     derivs = np.gradient(ratios, axis=0)

@@ -5,7 +5,7 @@ group2 = "+"
 method = "previous"
 
 [report]
-name = "_result"
+name = "result_"
 extension = ".xlsx"
 
 [tabulated_report]
