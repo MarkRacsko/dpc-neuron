@@ -180,18 +180,20 @@ def make_report(subdir: Path, report_path: Path, method: str, graphs: bool) -> p
         file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
         cell_ID += number_of_cells
         file_result["condition"] = [condition for _ in range(number_of_cells)]
-            # in the Excel files, columns will be called N1, N2, N3... for neurons and DPC1, DPC2, DPC3... for DPCs
+
+        if graphs:
+            graphing_path: Path = subdir / Path(file.stem)
+            if not graphing_path.exists():
+                Path.mkdir(graphing_path)
+
+            reaction_cols = [col for col in file_result.columns if "_reaction" in col]
+            make_graphs(x_data.flatten(), ratios, cell_cols, agonist_slices, file_result[reaction_cols], graphing_path)
+        
+        # in the Excel files, columns will be called N1, N2, N3... for neurons and DPC1, DPC2, DPC3... for DPCs
         cell_cols = [c.strip("1234567890") for c in cell_cols]
         file_result["cell_type"] = cell_cols
 
         report = pd.concat([report, file_result])
-
-        if graphs:
-            graphing_path: Path = Path(file.stem)
-            Path.mkdir(graphing_path)
-
-            reaction_cols = [col for col in file_result.columns if "_reaction" in col]
-            make_graphs(x_data.flatten(), ratios, agonist_slices, file_result[reaction_cols], graphing_path)
 
     return report
 
@@ -235,7 +237,7 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_reaction"] = reactions
         file_result[agonist + "_amp"] = amplitudes
 
-def make_graphs(x_data: np.ndarray, traces: np.ndarray, treatments: dict[str, slice[int]], reactions: pd.DataFrame, 
+def make_graphs(x_data: np.ndarray, traces: np.ndarray, col_names: list[str], treatments: dict[str, slice[int]], reactions: pd.DataFrame, 
                 save_dir: Path) -> None:
     """Creates line graphs for each cell in this particular measurement file. Is called from within make_report()
     because it needs the cell trace data and that funtion only returns the report DataFrame.
@@ -251,7 +253,7 @@ def make_graphs(x_data: np.ndarray, traces: np.ndarray, treatments: dict[str, sl
     """
     majors = [x for x in range(0, len(x_data) + 1, 60)]
     major_labels = [str(x//60) for x in majors]
-    for i, y_data in enumerate(traces, start=0):
+    for i, (cell_name, y_data) in enumerate(zip(col_names, traces), start=0):
         fig = figure.Figure(figsize=(10, 5))
         ax = fig.subplots(1, 1)
 
@@ -262,21 +264,24 @@ def make_graphs(x_data: np.ndarray, traces: np.ndarray, treatments: dict[str, sl
 
         ymin, ymax = ax.get_ylim()
         agonist_label_y = ymin - (ymax - ymin) * 0.2
-        reaction_label_y = ymin - (ymax - ymin) * 0.3
+        reaction_label_y = ymin - (ymax - ymin) * 0.25
         for name, time_slice in treatments.items():
+            if name == "baseline" or name == "END":
+                continue
             ax.axvline(x=time_slice.start, c="black")
             ax.axvline(x=time_slice.stop, c="black")
             ax.text(x=time_slice.start, y=agonist_label_y, s=name)
             # this next line is supposed to print TRUE under a given agonist name if the program thinks that cell reacts
             # to that agonist and FALSE otherwise
+            # if name != "baseline":
             ax.text(x=time_slice.start, y=reaction_label_y, s=str(reactions.at[i, f"{name}_reaction"]).upper())
 
         # Cell numbering is 0 indexed on purpose!
-        fig.suptitle(f"Cell no. {i}")
+        fig.suptitle(f"{cell_name}")
         fig.tight_layout()
-        fig.savefig(save_dir / f"Cell no. {i}", dpi=300)
+        fig.savefig(save_dir / f"Cell no. {i}.png", dpi=300)
         fig.clf()
-        print(f"Done with {i}")
+        print(f"Done with {cell_name}")
 
 # This would be the ugly solution
 # baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
