@@ -28,13 +28,12 @@ def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
     file = subdir / "events.csv"
     events_df = pd.read_csv(file, header=0)
 
-    event_times, event_names = list(events_df["frame"]), list(events_df["agonist"])
-    agonist_names = filter_events(event_names)
-    event_slices = create_event_slices(event_times)
-    agonist_slices: dict[str, slice[int]] = {k: v for k, v in zip(agonist_names, event_slices)}
+    treatments, start_times, stop_times = events_df["treatment"], events_df["start"], events_df["stop"]
+    event_slices = create_event_slices(start_times, stop_times)
+    agonist_slices: dict[str, slice[int]] = {k: v for k, v in zip(treatments, event_slices)}
     
     agonist_cols = []
-    for agonist in agonist_names:
+    for agonist in treatments:
         if agonist == "baseline":
             continue
         agonist_cols.append(agonist + "_reaction")
@@ -42,19 +41,8 @@ def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
     
     return agonist_slices, agonist_cols
 
-def filter_events(events: list[str]) -> list[str]:
-    """This is meant to remove event names which should not be included in the report, such as washouts and the end of 
-    the measurement, without making the DataFrame creating line an eyesore.
 
-    Args:
-        events (list[str]): The event list.
-
-    Returns:
-        list[str]: The same list with undesirable elements removed.
-    """
-    return [s for s in events if s.lower() not in [" ", "wash", "END"]]
-
-def create_event_slices(event_list: list[int]) -> list[slice[int]]:
+def create_event_slices(starts: pd.Series, stops: pd.Series) -> list[slice[int]]:
     """Translates the list of timepoints when events happened into a list of slice objects that represent this
     information as time windows. The output is intended to be used to access the relevant parts of the calcium trace data.
 
@@ -67,8 +55,8 @@ def create_event_slices(event_list: list[int]) -> list[slice[int]]:
     """
     slices: list[slice[int]] = []
 
-    for i in range(1, len(event_list)):
-        slices.append(slice(event_list[i-1], event_list[i]))
+    for start, stop in zip(starts, stops):
+        slices.append(slice(start, stop))
 
     return slices
 

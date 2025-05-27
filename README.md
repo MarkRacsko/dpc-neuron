@@ -12,6 +12,5 @@ TODO:
 - investigate pd.concat FutureWarning about concating empty stuff
 - reevaluate my hotfix to the shape issues, think through if this is the correct solution, apply solution to all versions of the function
 - implement saving the ratio values and the coefficients
-- fix misalignment on graphs
 - find out why graphs look nothing like what I made in Origin
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
