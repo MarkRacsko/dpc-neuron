@@ -136,8 +136,8 @@ def make_report(subdir: Path, report_path: Path, method: str, graphs: bool) -> p
         cells_380 = cells_380 - bgr_380
         
         # smoothing should probably go here
-        cells_340 = np.apply_along_axis(smooth, 1, cells_340)
-        cells_380 = np.apply_along_axis(smooth, 1, cells_380)
+        cells_340 = np.apply_along_axis(smooth, 0, cells_340)
+        cells_380 = np.apply_along_axis(smooth, 0, cells_380)
 
         # photobleaching correction
         matrix = np.hstack((np.ones_like(x_data), x_data))
@@ -186,15 +186,16 @@ def make_report(subdir: Path, report_path: Path, method: str, graphs: bool) -> p
     return report
 
 def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
-    baseline_means = ratios[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
-    baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
+    baseline_means = ratios[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
+    baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
     thresholds = baseline_means + 2*baseline_stdevs
     
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
-        reactions = np.where(amplitudes > thresholds, True, False)
+        maximums = ratios[time_window].max(axis=1, keepdims=True)
+        amplitudes = maximums - baseline_means.flatten()
+        reactions = np.where(maximums > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions
         file_result[agonist + "_amp"] = amplitudes
 
@@ -205,25 +206,30 @@ def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        thresholds = ratios[:,time_window.start - 1] + 2*baseline_stdevs.flatten() # hotfix, need to think more
-        amplitudes = ratios[:,time_window].max(axis=1, keepdims=False) - baseline_means.flatten()
-        reactions = np.where(amplitudes > thresholds, True, False)
+        thresholds = ratios[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + 2*baseline_stdevs.flatten() # hotfix, need to think more
+        maximums = ratios[:,time_window].max(axis=1, keepdims=False)
+        amplitudes = maximums - baseline_means.flatten()
+        # using amplitudes to determine reactions is wrong because of the baseline substraction
+        # (only cells where the max is larger than the threshold by at least the value of the baseline mean would be 
+        # considered to have reacted)
+        reactions = np.where(maximums > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions.flatten()
         file_result[agonist + "_amp"] = amplitudes.flatten()
 
 def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
-    derivs = np.gradient(ratios, axis=0)
-    baseline_means = derivs[agonist_slices["baseline"]].mean(axis=0, keepdims=True)
-    baseline_stdevs = derivs[agonist_slices["baseline"]].std(axis=0, mean=baseline_means, keepdims=True)
-    thresholds = baseline_means + 2*baseline_stdevs
+    derivs = np.gradient(ratios, axis=1)
+    baseline_deriv_means = derivs[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
+    baseline_deriv_stdevs = derivs[agonist_slices["baseline"]].std(axis=1, mean=baseline_deriv_means, keepdims=True)
+    thresholds = baseline_deriv_means + 2*baseline_deriv_stdevs.flatten()
     
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        amplitudes = ratios[time_window].max(axis=0, keepdims=True) - baseline_means
-        reactions = np.where(derivs[time_window] > thresholds, True, False)
-        file_result[agonist + "_reaction"] = reactions
-        file_result[agonist + "_amp"] = amplitudes
+        amplitudes = ratios[time_window].max(axis=1, keepdims=True) - baseline_deriv_means.flatten()
+        maximum_derivs = derivs[time_window].max(axis=1, keepdims=False)
+        reactions = np.where(maximum_derivs > thresholds, True, False)
+        file_result[agonist + "_reaction"] = reactions.flatten()
+        file_result[agonist + "_amp"] = amplitudes.flatten()
 
 def make_graphs(x_data: np.ndarray, traces: np.ndarray, col_names: list[str], treatments: dict[str, slice[int]], reactions: pd.DataFrame, 
                 save_dir: Path) -> None:
