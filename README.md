@@ -4,7 +4,6 @@ This project is meant to help me analyze and visualize results from my dental pu
 
 TODO:
 - implement IO and preprocessing steps:
-    - ~~read experimental condition~~
     - implement regex for recognizing conditions for improved flexibility (this is a maybe)
 - implement the actual processing work:
     - tabulate report files into one overall file, different experimental conditions (sets of agonists used) need to be handled somehow
@@ -12,5 +11,5 @@ TODO:
 - investigate pd.concat FutureWarning about concating empty stuff
 - reevaluate my hotfix to the shape issues, think through if this is the correct solution, apply solution to all versions of the function
 - implement saving the ratio values and the coefficients
-- find out why graphs look nothing like what I made in Origin
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
+- redesign the processing functionality in an object oriented fashion so tabulation and graphing can be decoupled from processing

@@ -55,6 +55,10 @@
     B. any value above mean of last 10 values of previous window + 2*std of baseline
     C. use derivative and baseline mean + 2*std, because responses are usually rapid (if perfusion is good)
 
+- OOP redesign:
+    - DataAnalyzer class: creates a SubDir instance for each subdirectory in the target folder, then calls different methods on these based on which flags were passed, also storing the tabulated report DataFrames
+    - SubDir class: represents the individual subdirectories where measurement results are stored and has methods to do processing, tabulation, and graphing on a subdirectory level
+
 # Planned structure of the project
 What the program should be doing:
 1. Read config file, which will store options that would be inconvenient to have to pass everytime or to make into magic strings/values.
