@@ -1,7 +1,7 @@
 import argparse
 import toml
 from pathlib import Path
-from processing_functions import process_subdir
+from analyzer import DataAnalyzer
 
 
 def main():
@@ -45,15 +45,17 @@ def main():
         raise ValueError("The only reaction testing methods implemented are \"baseline\", \"previous\", "
         "and \"derivative\". See README.md")
     
-    for subdir in data_path.iterdir():
-        if not subdir.is_dir():
-            continue
+    data_analyzer = DataAnalyzer(config, args.repeat)
+    for subdir_path in data_path.iterdir():
+        if subdir_path.is_dir():        
+            data_analyzer.create_subdir_instance(subdir_path)
         
-        report_path = subdir / f"{config["report"]["name"]}{subdir.name}{config["report"]["extension"]}"
-        if report_path.exists() and not args.repeat:
-            continue
-        
-        process_subdir(subdir, report_path, method, processing, tabulating, args.graph)
+    if processing:
+        data_analyzer.process_data()
+    if tabulating:
+        data_analyzer.tabulate_data()
+    if args.graph:
+        data_analyzer.graph_data()
 
 
 if __name__ == "__main__":
