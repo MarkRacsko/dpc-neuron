@@ -2,14 +2,22 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from utilities import create_event_slices, smooth
+from matplotlib.figure import Figure
 
 class SubDir:
     def __init__(self, path: Path, report_config: dict[str, str]) -> None:
         self.path = path
-        self.report_config = report_config
+        self.report_path = path / f"{report_config["name"]}{path.name}{report_config["extension"]}"
         self.treatment_col_names: list[str]
         self.treatment_windows: dict[str, slice[int]]
         self.report: pd.DataFrame
+        self.has_report: bool = False
+
+    def preprocessing(self, repeat: bool):
+        self.parse_events()
+
+        if self.report_path.exists() and not repeat:
+            self.has_report = True
 
     def parse_events(self) -> None:
         """Reads in the event file that describes what happened during the measurement in question.
@@ -38,11 +46,10 @@ class SubDir:
     def make_report(self, method: str, repeat: bool) -> None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
-        report_path = self.path / f"{self.report_config["name"]}{self.path.name}{self.report_config["extension"]}"
-        if report_path.exists() and not repeat:
+        if self.has_report:
             return
                 
-        measurement_files = [f for f in self.path.glob("*.xlsx") if f != report_path]
+        measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
         output_columns = ["cell_ID", "condition", "cell_type"] + self.treatment_col_names
 
         self.report = pd.DataFrame(columns=output_columns)
@@ -112,3 +119,48 @@ class SubDir:
             file_result["cell_type"] = cell_cols
 
             self.report = pd.concat([self.report, file_result])
+
+    def make_graphs(self, x_data: np.ndarray, traces: np.ndarray, reactions: pd.DataFrame, save_dir: Path) -> None:
+        """Creates line graphs for each cell in this particular measurement file. Is called from within make_report()
+        because it needs the cell trace data and that funtion only returns the report DataFrame.
+
+        Args:
+            x_data (np.ndarray): The time values as a 1d array.
+            traces (np.ndarray): The ratio data to be plotted.
+            treatments (dict[str, slice[int]]): The dictionary describing what agonist was used between what time points.
+            Called agonist_slices elsewhere.
+            reactions (pd.DataFrame): Those columns of the file result df that contain the reaction True/False values for
+            each agonist used.
+            save_dir (Path): The newly created directory where the graphs are supposed to be saved.
+        """
+        majors = [x for x in range(0, len(x_data) + 1, 60)]
+        major_labels = [str(x//60) for x in majors]
+        for i, (cell_name, y_data) in enumerate(zip(col_names, traces), start=0):
+            fig = Figure(figsize=(10, 5))
+            ax = fig.subplots(1, 1)
+
+            ax.plot(x_data, y_data)
+            ax.set_xticks(majors, labels=major_labels, minor=False)
+            ax.set_xlabel("Time (min)")
+            ax.set_ylabel("Ratio")
+
+            ymin, ymax = ax.get_ylim()
+            agonist_label_y = ymin - (ymax - ymin) * 0.2
+            reaction_label_y = ymin - (ymax - ymin) * 0.25
+            for name, time_slice in self.treatment_windows.items():
+                if name == "baseline" or name == "END":
+                    continue
+                ax.axvline(x=time_slice.start, c="black")
+                ax.axvline(x=time_slice.stop, c="black")
+                ax.text(x=time_slice.start, y=agonist_label_y, s=name)
+                # this next line is supposed to print TRUE under a given agonist name if the program thinks that cell reacts
+                # to that agonist and FALSE otherwise
+                # if name != "baseline":
+                ax.text(x=time_slice.start, y=reaction_label_y, s=str(reactions.at[i, f"{name}_reaction"]).upper())
+
+            # Cell numbering is 0 indexed on purpose!
+            fig.suptitle(f"{cell_name}")
+            fig.tight_layout()
+            fig.savefig(save_dir / f"Cell no. {i}.png", dpi=300)
+            fig.clf()
+            print(f"Done with {cell_name}")
