@@ -36,8 +36,11 @@ def main():
         tabulating = True
 
     data_path = Path(args.TARGET)
+    if not data_path.exists():
+        print("Target not found. Exiting.")
+        exit()
     if not data_path.is_dir():
-        print("Target not found or isn't a folder. Exiting.")
+        print("Target isn't a folder. Exiting.")
         exit()
 
     method = config["input"]["method"]

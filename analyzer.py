@@ -1,5 +1,6 @@
 from pathlib import Path
 from subdir import SubDir
+from typing import Any
 
 class DataAnalyzer:
     """Orchestrates data processing and presents a simpler interface to main.
@@ -9,7 +10,7 @@ class DataAnalyzer:
         repeat (bool): The --repeat command line flag as a bool. Tells the subdirectory level processors to skip already
         processed directories.
     """
-    def __init__(self, config: dict[str, dict[str, str]], repeat: bool) -> None:
+    def __init__(self, config: dict[str, dict[str, Any]], repeat: bool) -> None:
         self.config = config
         self._subdirs: list[SubDir] = []
         self.repeat = repeat
@@ -29,7 +30,7 @@ class DataAnalyzer:
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
         for subdir in self._subdirs:
-            subdir.make_report(self.config["input"]["method"])
+            subdir.make_report(self.config["input"]["method"], self.config["input"]["SD_multiplier"])
 
     def tabulate_data(self):
         pass

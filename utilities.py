@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 import pandas as pd
 import numpy as np
@@ -66,10 +67,10 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
 
     return out_array
 
-def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
+def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
     baseline_means = ratios[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
     baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
-    thresholds = baseline_means + 2*baseline_stdevs
+    thresholds = baseline_means + sd_mult*baseline_stdevs
     
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
@@ -80,14 +81,14 @@ def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_reaction"] = reactions
         file_result[agonist + "_amp"] = amplitudes
 
-def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
+def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
     baseline_means = ratios[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
     baseline_stdevs = ratios[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
 
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        thresholds = ratios[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + 2*baseline_stdevs.flatten() # hotfix, need to think more
+        thresholds = ratios[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs.flatten() # hotfix, need to think more
         maximums = ratios[:,time_window].max(axis=1, keepdims=False)
         amplitudes = maximums - baseline_means.flatten()
         # using amplitudes to determine reactions is wrong because of the baseline substraction
@@ -97,11 +98,11 @@ def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_reaction"] = reactions.flatten()
         file_result[agonist + "_amp"] = amplitudes.flatten()
 
-def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame):
+def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
     derivs = np.gradient(ratios, axis=1)
     baseline_deriv_means = derivs[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
     baseline_deriv_stdevs = derivs[agonist_slices["baseline"]].std(axis=1, mean=baseline_deriv_means, keepdims=True)
-    thresholds = baseline_deriv_means + 2*baseline_deriv_stdevs.flatten()
+    thresholds = baseline_deriv_means + sd_mult*baseline_deriv_stdevs.flatten()
     
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":

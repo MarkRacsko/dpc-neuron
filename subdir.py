@@ -45,7 +45,7 @@ class SubDir:
             self.treatment_col_names.append(agonist + "_reaction")
             self.treatment_col_names.append(agonist + "_amp")
 
-    def make_report(self, method: str) -> None:
+    def make_report(self, method: str, sd_multiplier: int) -> None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
         if self.has_report:
@@ -97,11 +97,11 @@ class SubDir:
             # do in main before reading any measurement data from disk, so if the program's gonna crash it does so quickly
             match method:
                 case "baseline":
-                    baseline_threshold(ratios, self.treatment_windows, file_result)
+                    baseline_threshold(ratios, self.treatment_windows, file_result, sd_multiplier)
                 case "previous":
-                    previous_threshold(ratios, self.treatment_windows, file_result)
+                    previous_threshold(ratios, self.treatment_windows, file_result, sd_multiplier)
                 case "derivative":
-                    derivate_threshold(ratios, self.treatment_windows, file_result)
+                    derivate_threshold(ratios, self.treatment_windows, file_result, sd_multiplier)
             
             number_of_cells = ratios.shape[0]
             file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
