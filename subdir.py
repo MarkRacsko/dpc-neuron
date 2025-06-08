@@ -113,6 +113,8 @@ class SubDir:
 
             self.report = pd.concat([self.report, file_result])
 
+        self.save_report()
+
     def make_graphs(self):
         measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
         if self.report is None:
@@ -190,3 +192,10 @@ class SubDir:
             ws.append(row)
 
         wb.save(file)
+
+    def save_report(self) -> None:
+        assert self.report is not None # report is guaranteed not to be None by the time this method is called
+        with pd.ExcelWriter(self.report_path) as writer:
+            self.report.to_excel(writer, sheet_name="Cells", index=False)
+            stats = self.report[["cell_type"] + self.treatment_col_names].value_counts()
+            stats.to_excel(writer, sheet_name="Summary")
