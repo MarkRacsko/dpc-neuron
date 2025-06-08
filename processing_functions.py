@@ -6,16 +6,19 @@ import math
 from matplotlib import figure
 
 def process_subdir(subdir: Path, report_path: Path, method: str, process: bool, tabulate: bool, graphs: bool):
-
+    report = None
     if process:
         report = make_report(subdir, report_path, method, graphs)
         report.to_excel(report_path)
 
     if tabulate:
-        # to be implemented
-        pass
+        _, agonists = parse_events(subdir, tabulate_mode=True)
+        if report is None:
+            report = pd.read_excel(report_path)
+        stats = report[["cell_type"] + agonists].value_counts()
+        
 
-def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
+def parse_events(subdir: Path, tabulate_mode: bool = False) -> tuple[dict[str, slice[int]], list[str]]:
     """Reads in the event file that describes what happened during the measurement in question.
 
     Args:
@@ -37,7 +40,8 @@ def parse_events(subdir: Path) -> tuple[dict[str, slice[int]], list[str]]:
         if agonist == "baseline":
             continue
         agonist_cols.append(agonist + "_reaction")
-        agonist_cols.append(agonist + "_amp")
+        if not tabulate_mode:
+            agonist_cols.append(agonist + "_amp")
     
     return agonist_slices, agonist_cols
 

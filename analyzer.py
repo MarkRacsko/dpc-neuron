@@ -12,10 +12,11 @@ class DataAnalyzer:
 
     def process_data(self):
         for subdir in self.subdirs:
-            subdir.make_report(self.config["input"]["method"], self.repeat)
+            subdir.make_report(self.config["input"]["method"])
 
     def tabulate_data(self):
         pass
 
     def graph_data(self):
-        pass
+        for subdir in self.subdirs:
+            subdir.make_graphs()

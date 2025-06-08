@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
+import openpyxl
 from pathlib import Path
-from utilities import create_event_slices, smooth
+from utilities import create_event_slices, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from matplotlib.figure import Figure
+from typing import Optional
 
 class SubDir:
     def __init__(self, path: Path, report_config: dict[str, str]) -> None:
@@ -10,7 +12,7 @@ class SubDir:
         self.report_path = path / f"{report_config["name"]}{path.name}{report_config["extension"]}"
         self.treatment_col_names: list[str]
         self.treatment_windows: dict[str, slice[int]]
-        self.report: pd.DataFrame
+        self.report: Optional[pd.DataFrame] = None
         self.has_report: bool = False
 
     def preprocessing(self, repeat: bool):
@@ -43,7 +45,7 @@ class SubDir:
             self.treatment_col_names.append(agonist + "_reaction")
             self.treatment_col_names.append(agonist + "_amp")
 
-    def make_report(self, method: str, repeat: bool) -> None:
+    def make_report(self, method: str) -> None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
         if self.has_report:
@@ -85,7 +87,7 @@ class SubDir:
             
             # I'm working with Fura2 so the actual data of interest is the ratios between emissions at 340 and 380 nm.
             ratios = np.transpose(cells_340 / cells_380)
-            
+            self.save_ratios(file, x_data, ratios, cell_cols)
             # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
             # be "neuron + DPC {number}.xlsx"
             condition = "N" if "only" in file.name else "N+D"
@@ -95,32 +97,41 @@ class SubDir:
             # do in main before reading any measurement data from disk, so if the program's gonna crash it does so quickly
             match method:
                 case "baseline":
-                    baseline_threshold(ratios, agonist_slices, file_result)
+                    baseline_threshold(ratios, self.treatment_windows, file_result)
                 case "previous":
-                    previous_threshold(ratios, agonist_slices, file_result)
+                    previous_threshold(ratios, self.treatment_windows, file_result)
                 case "derivative":
-                    derivate_threshold(ratios, agonist_slices, file_result)
+                    derivate_threshold(ratios, self.treatment_windows, file_result)
             
             number_of_cells = ratios.shape[0]
             file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
             cell_ID += number_of_cells
             file_result["condition"] = [condition for _ in range(number_of_cells)]
-
-            if graphs:
-                graphing_path: Path = subdir / Path(file.stem)
-                if not graphing_path.exists():
-                    Path.mkdir(graphing_path)
-
-                reaction_cols = [col for col in file_result.columns if "_reaction" in col]
-                make_graphs(x_data.flatten(), ratios, cell_cols, agonist_slices, file_result[reaction_cols], graphing_path)
-            
             # in the Excel files, columns will be called N1, N2, N3... for neurons and DPC1, DPC2, DPC3... for DPCs
             cell_cols = [c.strip("1234567890") for c in cell_cols]
             file_result["cell_type"] = cell_cols
 
             self.report = pd.concat([self.report, file_result])
 
-    def make_graphs(self, x_data: np.ndarray, traces: np.ndarray, reactions: pd.DataFrame, save_dir: Path) -> None:
+    def make_graphs(self):
+        measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
+        if self.report is None:
+            self.report = pd.read_excel(self.report_path)
+        
+        for file in measurement_files:
+            graphing_path: Path = self.path / Path(file.stem)
+            if not graphing_path.exists():
+                Path.mkdir(graphing_path)
+
+            ratios = pd.read_excel(file, sheet_name="py_ratios")
+            cell_cols = [c for c in ratios.columns if c != "Time"]
+            ratios = np.transpose(ratios.to_numpy())
+            x_data, ratios = ratios[0], ratios[1:]
+            reaction_cols = [col for col in self.report.columns if "_reaction" in col]
+
+            self.graph_data(x_data.flatten(), ratios, cell_cols, self.report[reaction_cols], graphing_path)
+    
+    def graph_data(self, x_data: np.ndarray, traces: np.ndarray, col_names: list[str], reactions: pd.DataFrame, save_dir: Path) -> None:
         """Creates line graphs for each cell in this particular measurement file. Is called from within make_report()
         because it needs the cell trace data and that funtion only returns the report DataFrame.
 
@@ -164,3 +175,18 @@ class SubDir:
             fig.savefig(save_dir / f"Cell no. {i}.png", dpi=300)
             fig.clf()
             print(f"Done with {cell_name}")
+
+    def save_ratios(self, file: Path, x_data: np.ndarray, ratios: np.ndarray, col_names: list[str]) -> None:
+        col_names = ["Time"] + col_names
+        data = np.vstack((x_data, ratios))
+        data = np.transpose(data)
+        
+        wb = openpyxl.load_workbook(file)
+        wb.create_sheet("py_ratios")
+        ws = wb["py_ratios"]
+        
+        ws.append(col_names)
+        for row in data:
+            ws.append(row)
+
+        wb.save(file)
