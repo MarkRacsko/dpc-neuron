@@ -180,16 +180,18 @@ class SubDir:
 
     def save_ratios(self, file: Path, x_data: np.ndarray, ratios: np.ndarray, col_names: list[str]) -> None:
         col_names = ["Time"] + col_names
-        data = np.vstack((x_data, ratios))
+        data = np.vstack((x_data.flatten(), ratios))
         data = np.transpose(data)
         
         wb = openpyxl.load_workbook(file)
+        if "py_ratios" in wb.sheetnames: # this is only going to be true when --repeat is used
+            wb.remove(wb["py_ratios"])
         wb.create_sheet("py_ratios")
         ws = wb["py_ratios"]
         
         ws.append(col_names)
         for row in data:
-            ws.append(row)
+            ws.append(list(row))
 
         wb.save(file)
 

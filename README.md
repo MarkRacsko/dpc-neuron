@@ -12,4 +12,5 @@ TODO:
 - reevaluate my hotfix to the shape issues, think through if this is the correct solution, apply solution to all versions of the function
 - ~~implement saving the ratio values~~ and the coefficients
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
-- redesign the processing functionality in an object oriented fashion so tabulation and graphing can be decoupled from processing
+- implement config based grouping of results
+- maybe add config options to change properties (size, color, ...) of the graphs
