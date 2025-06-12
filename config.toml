@@ -1,5 +1,5 @@
 [input]
-default_target_folder = "./data"
+target_folder = "./data"
 group1 = "only"
 group2 = "+"
 method = "previous"

@@ -8,6 +8,7 @@ def main():
 
     with open("./config.toml", "r") as f:
         config = toml.load(f)
+    default_target = config["input"]["target_folder"]
     
     target_help = "Path to the folder you want to process. Individual measurement results must be in subfolders of this folder, files in the same subfolder will be interpreted as belonging to the same experiment/day."
     r_help = "If set, process (and/or tabulate) every measurment found in the target folder. Defaults to False, in which case measurements that already have a report associated with them are ignored."
@@ -18,7 +19,7 @@ def main():
     g_help = "Make line plots for every cell in the measured dataset. Resultant files will be placed in newly created subdirectories for each measurement Excel file."
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("TARGET", nargs="?", default="./data", help=target_help)
+    parser.add_argument("TARGET", nargs="?", default=default_target, help=target_help)
     parser.add_argument("-r", "--repeat", action="store_true", default=False, help=r_help)
     group = parser.add_argument_group(title="processing options", description=group_help)
     excl_group = group.add_mutually_exclusive_group(required=True)
@@ -45,8 +46,15 @@ def main():
 
     method = config["input"]["method"]
     if method not in ["baseline", "previous", "derivative"]:
-        raise ValueError("The only reaction testing methods implemented are \"baseline\", \"previous\", "
+        # this is here and not where the check is actually relevant in order to avoid unnecessary IO and processing
+        # operations if the user made a mistake and the program would crash anyway
+        print("The only reaction testing methods implemented are \"baseline\", \"previous\", "
         "and \"derivative\". See README.md")
+        exit()
+    
+    # this is so the analyzer object will have access to the target path for saving the tabulated summary
+    # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
+    config["input"]["target_folder"] = data_path
     
     data_analyzer = DataAnalyzer(config, args.repeat)
     for subdir_path in data_path.iterdir():

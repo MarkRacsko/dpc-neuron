@@ -59,6 +59,12 @@
     - DataAnalyzer class: creates a SubDir instance for each subdirectory in the target folder, then calls different methods on these based on which flags were passed, also storing the tabulated report DataFrames
     - SubDir class: represents the individual subdirectories where measurement results are stored and has methods to do processing, tabulation, and graphing on a subdirectory level
 
+- Tabulation idea:
+    - take it out of the Subdir class
+    - the analyzer class iterates over its list of Subdir instances and collects their reports into a dictionary where the keys are the column names in the report. For each report, we check if its columns are in the dict already, if not we add them as a new key, then either way, we add the report's content to the list of reports stored under that key.
+    - dict[list[str], list[Series[int]]]
+    - then we simply iterate over this dict as key value pairs. For each key, we create a new sheet in the summary, then add all the results from the same conditions into a single df as new columns, column names being the name/date of the experiment
+    
 # Planned structure of the project
 What the program should be doing:
 1. Read config file, which will store options that would be inconvenient to have to pass everytime or to make into magic strings/values.

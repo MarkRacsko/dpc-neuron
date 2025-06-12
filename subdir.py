@@ -178,6 +178,10 @@ class SubDir:
             fig.clf()
             print(f"Done with {cell_name}")
 
+    def load_summary(self) -> None:
+            self.report = pd.read_excel(self.report_path, sheet_name="Summary")
+
+
     def save_ratios(self, file: Path, x_data: np.ndarray, ratios: np.ndarray, col_names: list[str]) -> None:
         col_names = ["Time"] + col_names
         data = np.vstack((x_data.flatten(), ratios))
