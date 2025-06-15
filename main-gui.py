@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from gui_utilities import Mode, select_folder, analyze_button_press, config_button_press, metadata_button_press
+from gui_utilities import select_folder, analyze_button_press, config_button_press, metadata_button_press
 from functools import partial
 
 
@@ -24,6 +24,11 @@ def main():
     current_mode = tk.StringVar(value="default")
     root.geometry(DISPLAY_MODES[current_mode.get()])
     root.resizable(False, False)
+
+    def resize_window(*args):
+        root.geometry(DISPLAY_MODES[current_mode.get()])
+
+    current_mode.trace_add("write", resize_window)
 
     # Browse target folder
     target_label = tk.Label(root, text="Data folder:", font=FONT_S)
