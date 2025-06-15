@@ -5,9 +5,11 @@ group2 = "X3"
 
 [treatments]
     [baseline]
-    start = 0
-    stop = 60
+    begin = 0
+    end = 60
     [AITC]
-    start = 60
-    stop = 120
-    ...
+    begin = 60
+    end = 300
+    [K+]
+    begin = 300
+    end = 360

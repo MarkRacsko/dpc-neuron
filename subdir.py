@@ -54,13 +54,13 @@ class SubDir:
         self.conditions = metadata["conditions"]
 
         for agonist_name, agonist_dict in metadata["treatments"].items():
-            self.treatment_windows[agonist_name] = slice(agonist_dict["start"], agonist_dict["stop"])
+            self.treatment_windows[agonist_name] = slice(agonist_dict["begin"], agonist_dict["end"])
             if agonist_name == "baseline":
                 continue
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, method: str, sd_multiplier: int) -> None:
+    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int) -> None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
         if self.has_report:
@@ -74,12 +74,14 @@ class SubDir:
         for file in measurement_files:
             file_result = pd.DataFrame(columns=output_columns)
             if self.conditions["ratiometric_dye"]:
-                cell_cols, data = self.prepare_ratiometric_data(file)
+                cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window)
             else:
-                cell_cols, data = self.prepare_non_ratiometric_data(file)
+                cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window)
             # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
             # be "neuron + DPC {number}.xlsx"
-            condition = "N" if "only" in file.name else "N+D"
+            group1: str = self.conditions["group1"]
+            group2: str = self.conditions["group2"]
+            condition = group1 if group1 in file.name else group2
             
             # determine if cells react to each of the agonists, and how big the response amplitudes are
             # no default case because we already have a guard clause to make sure these 3 are the only options, which we
@@ -113,8 +115,8 @@ class SubDir:
             graphing_path: Path = self.path / Path(file.stem)
             if not graphing_path.exists():
                 Path.mkdir(graphing_path)
-
-            ratios = pd.read_excel(file, sheet_name="py_ratios")
+            sheet_name = "Py_ratios" if self.conditions["ratiometric_dye"] else "Processed"
+            ratios = pd.read_excel(file, sheet_name=sheet_name)
             cell_cols = [c for c in ratios.columns if c != "Time"]
             ratios = np.transpose(ratios.to_numpy())
             x_data, ratios = ratios[0], ratios[1:]
@@ -170,7 +172,7 @@ class SubDir:
     def load_summary(self) -> None:
             self.report = pd.read_excel(self.report_path, sheet_name="Summary")
 
-    def prepare_ratiometric_data(self, file: Path) -> tuple[list[str], np.ndarray]:
+    def prepare_ratiometric_data(self, file: Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
         # read in 340 and 380 data separately
         F340_data = pd.read_excel(file, sheet_name="F340")
         F380_data = pd.read_excel(file, sheet_name="F380")
@@ -188,8 +190,8 @@ class SubDir:
         cells_380 = cells_380 - bgr_380
         
         # smoothing should probably go here
-        cells_340 = np.apply_along_axis(smooth, 0, cells_340)
-        cells_380 = np.apply_along_axis(smooth, 0, cells_380)
+        cells_340 = np.apply_along_axis(smooth, 0, cells_340, window_size = smoothing_window)
+        cells_380 = np.apply_along_axis(smooth, 0, cells_380, window_size = smoothing_window)
 
         # photobleaching correction
         matrix = np.hstack((np.ones_like(x_data), x_data))
@@ -204,7 +206,7 @@ class SubDir:
 
         return cell_cols, ratios
     
-    def prepare_non_ratiometric_data(self, file:Path) -> tuple[list[str], np.ndarray]:
+    def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
         data = pd.read_excel(file, sheet_name="Raw")
         cell_cols = [c for c in data.columns if c not in {"Time", "Background"}]
         x_data, bgr, cells = data["Time"].to_numpy(), data["Background"].to_numpy(), data[cell_cols].to_numpy()
@@ -212,7 +214,7 @@ class SubDir:
         
         # normalization and smoothing
         cells = np.apply_along_axis(normalize, 0, cells, baseline=self.treatment_windows["baseline"].stop)
-        cells = np.apply_along_axis(smooth, 0, cells)
+        cells = np.apply_along_axis(smooth, 0, cells, window_size = smoothing_window)
         
         # photobleaching correction
         matrix = np.hstack((np.ones_like(x_data), x_data))

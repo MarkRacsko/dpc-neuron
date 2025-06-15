@@ -2,6 +2,7 @@
 target_folder = "./data"
 method = "previous"
 SD_multiplier = 2
+smoothing_range = 5
 
 [report]
 name = "result_"

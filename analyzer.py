@@ -35,7 +35,9 @@ class DataAnalyzer:
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
         for subdir in self._subdirs:
-            subdir.make_report(self.config["input"]["method"], self.config["input"]["SD_multiplier"])
+            subdir.make_report(method=self.config["input"]["method"],
+                               sd_multiplier=self.config["input"]["SD_multiplier"],
+                               smoothing_window=self.config["input"]["smoothing_range"])
 
     def tabulate_data(self):
         sum_conf = self.config["tabulated_report"]
