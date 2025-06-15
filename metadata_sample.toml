@@ -1,0 +1,13 @@
+[conditions]
+dye = "fura2"
+group1 = "kontrol"
+group2 = "X3"
+
+[treatments]
+    [baseline]
+    start = 0
+    stop = 60
+    [AITC]
+    start = 60
+    stop = 120
+    ...

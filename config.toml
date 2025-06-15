@@ -1,7 +1,5 @@
 [input]
 target_folder = "./data"
-group1 = "only"
-group2 = "+"
 method = "previous"
 SD_multiplier = 2
 

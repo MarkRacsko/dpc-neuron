@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import openpyxl
+import toml
 from pathlib import Path
 from utilities import create_event_slices, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from matplotlib.figure import Figure
@@ -10,10 +11,11 @@ class SubDir:
     def __init__(self, path: Path, report_config: dict[str, str]) -> None:
         self.path = path
         self.report_path = path / f"{report_config["name"]}{path.name}{report_config["extension"]}"
-        self.treatment_col_names: list[str]
-        self.treatment_windows: dict[str, slice[int]]
+        self.treatment_col_names: list[str] = []
+        self.treatment_windows: dict[str, slice[int]] = {}
         self.report: Optional[pd.DataFrame] = None
         self.has_report: bool = False
+        self.conditions: dict[str, str]
 
     def preprocessing(self, repeat: bool):
         self.parse_events()
@@ -38,13 +40,26 @@ class SubDir:
         event_slices = create_event_slices(start_times, stop_times)
         self.treatment_windows: dict[str, slice[int]] = {k: v for k, v in zip(treatments, event_slices)}
         
-        self.treatment_col_names = []
         for agonist in treatments:
             if agonist == "baseline":
                 continue
             self.treatment_col_names.append(agonist + "_reaction")
             self.treatment_col_names.append(agonist + "_amp")
 
+    def parse_metadata(self) -> None:
+        file = self.path / "metadata.toml"
+        with open(file, "r") as f:
+            metadata = toml.load(f)
+
+        self.conditions = metadata["conditions"]
+
+        for agonist_name, agonist_dict in metadata["treatments"].items():
+            self.treatment_windows[agonist_name] = slice(agonist_dict["start"], agonist_dict["stop"])
+            if agonist_name == "baseline":
+                continue
+            self.treatment_col_names.append(agonist_name + "_reaction")
+            self.treatment_col_names.append(agonist_name + "_amp")
+    
     def make_report(self, method: str, sd_multiplier: int) -> None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
@@ -118,7 +133,7 @@ class SubDir:
     def make_graphs(self):
         measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
         if self.report is None:
-            self.report = pd.read_excel(self.report_path)
+            self.report = pd.read_excel(self.report_path, sheet_name="Cells")
         
         for file in measurement_files:
             graphing_path: Path = self.path / Path(file.stem)
