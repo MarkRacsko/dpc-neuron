@@ -21,6 +21,9 @@ def create_event_slices(starts: pd.Series, stops: pd.Series) -> list[slice[int]]
 
     return slices
 
+def normalize(array: np.ndarray, baseline) -> np.ndarray:
+    return array / array[0:baseline].mean()
+
 def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
     """This function performs a sliding window type smoothing on an array representing a Ca trace.
 

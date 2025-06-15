@@ -3,7 +3,7 @@ import pandas as pd
 import openpyxl
 import toml
 from pathlib import Path
-from utilities import create_event_slices, smooth, baseline_threshold, previous_threshold, derivate_threshold
+from utilities import create_event_slices, normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from matplotlib.figure import Figure
 from typing import Optional
 
@@ -18,7 +18,7 @@ class SubDir:
         self.conditions: dict[str, str]
 
     def preprocessing(self, repeat: bool):
-        self.parse_events()
+        self.parse_metadata()
 
         if self.report_path.exists() and not repeat:
             self.has_report = True
@@ -73,36 +73,10 @@ class SubDir:
         cell_ID: int = 0
         for file in measurement_files:
             file_result = pd.DataFrame(columns=output_columns)
-            # read in 340 and 380 data separately
-            F340_data = pd.read_excel(file, sheet_name="F340")
-            F380_data = pd.read_excel(file, sheet_name="F380")
-            cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
-            
-            # split the data
-            x_data, bgr_380, cells_380 = F380_data["Time"].to_numpy(), F380_data["Background"].to_numpy(), F380_data[cell_cols].to_numpy()
-            bgr_340, cells_340 = F340_data["Background"].to_numpy(), F340_data[cell_cols].to_numpy()
-            
-            # turn time and background into 2d arrays with one column each because this shape is needed for linalg.lstsq
-            x_data, bgr_340, bgr_380 = x_data[:, np.newaxis], bgr_340[:, np.newaxis], bgr_380[:, np.newaxis]
-            
-            # substract backgrounds
-            cells_340 = cells_340 - bgr_340
-            cells_380 = cells_380 - bgr_380
-            
-            # smoothing should probably go here
-            cells_340 = np.apply_along_axis(smooth, 0, cells_340)
-            cells_380 = np.apply_along_axis(smooth, 0, cells_380)
-
-            # photobleaching correction
-            matrix = np.hstack((np.ones_like(x_data), x_data))
-            coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
-            coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
-            cells_340 = cells_340 - (x_data * coeffs_340[1])
-            cells_380 = cells_380 - (x_data * coeffs_380[1])
-            
-            # I'm working with Fura2 so the actual data of interest is the ratios between emissions at 340 and 380 nm.
-            ratios = np.transpose(cells_340 / cells_380)
-            self.save_ratios(file, x_data, ratios, cell_cols)
+            if self.conditions["ratiometric_dye"]:
+                cell_cols, data = self.prepare_ratiometric_data(file)
+            else:
+                cell_cols, data = self.prepare_non_ratiometric_data(file)
             # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
             # be "neuron + DPC {number}.xlsx"
             condition = "N" if "only" in file.name else "N+D"
@@ -112,13 +86,13 @@ class SubDir:
             # do in main before reading any measurement data from disk, so if the program's gonna crash it does so quickly
             match method:
                 case "baseline":
-                    baseline_threshold(ratios, self.treatment_windows, file_result, sd_multiplier)
+                    baseline_threshold(data, self.treatment_windows, file_result, sd_multiplier)
                 case "previous":
-                    previous_threshold(ratios, self.treatment_windows, file_result, sd_multiplier)
+                    previous_threshold(data, self.treatment_windows, file_result, sd_multiplier)
                 case "derivative":
-                    derivate_threshold(ratios, self.treatment_windows, file_result, sd_multiplier)
+                    derivate_threshold(data, self.treatment_windows, file_result, sd_multiplier)
             
-            number_of_cells = ratios.shape[0]
+            number_of_cells = data.shape[0]
             file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
             cell_ID += number_of_cells
             file_result["condition"] = [condition for _ in range(number_of_cells)]
@@ -196,17 +170,73 @@ class SubDir:
     def load_summary(self) -> None:
             self.report = pd.read_excel(self.report_path, sheet_name="Summary")
 
+    def prepare_ratiometric_data(self, file: Path) -> tuple[list[str], np.ndarray]:
+        # read in 340 and 380 data separately
+        F340_data = pd.read_excel(file, sheet_name="F340")
+        F380_data = pd.read_excel(file, sheet_name="F380")
+        cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
+        
+        # split the data
+        x_data, bgr_380, cells_380 = F380_data["Time"].to_numpy(), F380_data["Background"].to_numpy(), F380_data[cell_cols].to_numpy()
+        bgr_340, cells_340 = F340_data["Background"].to_numpy(), F340_data[cell_cols].to_numpy()
+        
+        # turn time and background into 2d arrays with one column each because this shape is needed for linalg.lstsq
+        x_data, bgr_340, bgr_380 = x_data[:, np.newaxis], bgr_340[:, np.newaxis], bgr_380[:, np.newaxis]
+        
+        # substract backgrounds
+        cells_340 = cells_340 - bgr_340
+        cells_380 = cells_380 - bgr_380
+        
+        # smoothing should probably go here
+        cells_340 = np.apply_along_axis(smooth, 0, cells_340)
+        cells_380 = np.apply_along_axis(smooth, 0, cells_380)
 
-    def save_ratios(self, file: Path, x_data: np.ndarray, ratios: np.ndarray, col_names: list[str]) -> None:
+        # photobleaching correction
+        matrix = np.hstack((np.ones_like(x_data), x_data))
+        coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
+        coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
+        cells_340 = cells_340 - (x_data * coeffs_340[1])
+        cells_380 = cells_380 - (x_data * coeffs_380[1])
+        
+        # I'm working with Fura2 so the actual data of interest is the ratios between emissions at 340 and 380 nm.
+        ratios = np.transpose(cells_340 / cells_380)
+        self.save_processed_data(file, x_data, ratios, cell_cols)
+
+        return cell_cols, ratios
+    
+    def prepare_non_ratiometric_data(self, file:Path) -> tuple[list[str], np.ndarray]:
+        data = pd.read_excel(file, sheet_name="Raw")
+        cell_cols = [c for c in data.columns if c not in {"Time", "Background"}]
+        x_data, bgr, cells = data["Time"].to_numpy(), data["Background"].to_numpy(), data[cell_cols].to_numpy()
+        x_data, bgr = x_data[:, np.newaxis], bgr[:, np.newaxis]
+        
+        # normalization and smoothing
+        cells = np.apply_along_axis(normalize, 0, cells, baseline=self.treatment_windows["baseline"].stop)
+        cells = np.apply_along_axis(smooth, 0, cells)
+        
+        # photobleaching correction
+        matrix = np.hstack((np.ones_like(x_data), x_data))
+        coeffs, _, _, _ = np.linalg.lstsq(matrix, cells, rcond=None)
+        cells = cells - (x_data * coeffs[1])
+
+        self.save_processed_data(file, x_data, cells, cell_cols)
+        return cell_cols, cells.transpose()
+
+
+    def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str]) -> None:
         col_names = ["Time"] + col_names
-        data = np.vstack((x_data.flatten(), ratios))
+        data = np.vstack((x_data.flatten(), cell_data))
         data = np.transpose(data)
+        if self.conditions["ratiometric_dye"]:
+            sheet_name: str = "Py_ratios"
+        else:
+            sheet_name: str = "Processed"
         
         wb = openpyxl.load_workbook(file)
-        if "py_ratios" in wb.sheetnames: # this is only going to be true when --repeat is used
-            wb.remove(wb["py_ratios"])
-        wb.create_sheet("py_ratios")
-        ws = wb["py_ratios"]
+        if sheet_name in wb.sheetnames: # this is only going to be true when --repeat is used
+            wb.remove(wb[sheet_name])
+        wb.create_sheet(sheet_name)
+        ws = wb[sheet_name]
         
         ws.append(col_names)
         for row in data:
