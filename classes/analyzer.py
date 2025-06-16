@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-from subdir import SubDir
+from .subdir import SubDir
 from typing import Any
 
 type ExperimentalCondition = list[str]

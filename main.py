@@ -1,7 +1,7 @@
 import argparse
 import toml
 from pathlib import Path
-from analyzer import DataAnalyzer
+from classes import DataAnalyzer
 
 
 def main():

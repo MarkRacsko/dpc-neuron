@@ -3,7 +3,7 @@ import pandas as pd
 import openpyxl
 import toml
 from pathlib import Path
-from utilities import create_event_slices, normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
+from functions import create_event_slices, normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from matplotlib.figure import Figure
 from typing import Optional
 

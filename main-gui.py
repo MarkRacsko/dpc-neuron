@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from gui_utilities import select_folder, analyze_button_press, config_button_press, metadata_button_press
+from functions import select_folder, analyze_button_press, config_button_press, metadata_button_press
 from functools import partial
 
 
