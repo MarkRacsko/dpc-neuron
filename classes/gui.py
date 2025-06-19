@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 from typing import Any
+from pathlib import Path
+from .analyzer import DataAnalyzer
 
 FONT_L = ("Arial", 18)
 FONT_S = ("Arial", 16)
@@ -89,11 +91,42 @@ class GUI:
         """
         path = filedialog.askdirectory(title="Select a folfer")
         if path:
-            self.target_path = path
+            self.target_path.set(path)
             self.target_label.config(text="Selected: yes")
 
     def analyze_button_press(self) -> None:
-        print("To be implemented!")
+        data_path = Path(self.target_path.get())
+        if not data_path.exists():
+            # better error handling needed, for now I will leave it as-is
+            print("Target not found. Exiting.")
+            exit()
+        if not data_path.is_dir():
+            print("Target isn't a folder. Exiting.")
+            exit()
+
+        method = self.config["input"]["method"]
+        if method not in ["baseline", "previous", "derivative"]:
+            # this is here and not where the check is actually relevant in order to avoid unnecessary IO and processing
+            # operations if the user made a mistake and the program would crash anyway
+            print("The only reaction testing methods implemented are \"baseline\", \"previous\", "
+            "and \"derivative\". See README.md")
+            exit()
+        
+        # this is so the analyzer object will have access to the target path for saving the tabulated summary
+        # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
+        self.config["input"]["target_folder"] = data_path
+        
+        data_analyzer = DataAnalyzer(self.config, bool(self.check_r_state.get()))
+        for subdir_path in data_path.iterdir():
+            if subdir_path.is_dir():        
+                data_analyzer.create_subdir_instance(subdir_path)
+            
+        if self.check_p_state.get():
+            data_analyzer.process_data()
+        if self.check_t_state.get():
+            data_analyzer.tabulate_data()
+        if self.check_g_state.get():
+            data_analyzer.graph_data()
 
     def config_button_press(self) -> None:
         self.current_mode.set("config")

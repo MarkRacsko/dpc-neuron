@@ -237,8 +237,8 @@ class SubDir:
         wb = openpyxl.load_workbook(file)
         if sheet_name in wb.sheetnames: # this is only going to be true when --repeat is used
             wb.remove(wb[sheet_name])
-        wb.create_sheet(sheet_name)
-        ws = wb[sheet_name]
+        
+        ws = wb.create_sheet(sheet_name)
         
         ws.append(col_names)
         for row in data:

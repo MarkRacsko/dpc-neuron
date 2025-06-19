@@ -31,7 +31,7 @@ These have 2 section:
 - conditions:
     - ratiometric_dye: 1 if you're using Fura2 and 0 otherwise. (Technically other values considered true and false by Python are also acceptable, but let's keep it simple. 0 and 1.)
     - group1 and group2: These describe the experimental groups to be compared. Can be any string values, make sure to put them in quotation marks. Also these group names must be present in the individual file names as the actual grouping is done by checking which group name the file name contains.
-- treatments: Consists of subsections, one for each agonist you've applied during the measurement. The first subsection is expected to be called baseline, others can be named whatever you want. In the sample file the subsections are indented, but they don't have to be. If you add more subsections, each must have its name in square brackets and contain two keys, one called begin and one called end. The end value should be equal to the next agonist's begin value, or the total number of frames in the measurement for the final agonist used (which in a neuron context is usually potassium chloride, which should be called K+.) The values for these two keys describe when a given agonist treatment began and ended, respectively. They should be integers.
+- treatments: Consists of subsections, one for each agonist you've applied during the measurement. Subsections need to be named "treatments.something", without the quotation marks. The first subsection is expected to be called baseline, others can be named whatever you want (so long as you follow the treatments. naming convention). In the sample file the subsections are indented, but they don't have to be. If you add more subsections, each must have its name in square brackets and contain two keys, one called begin and one called end. The end value should be equal to the next agonist's begin value, or the total number of frames in the measurement for the final agonist used (which in a neuron context is usually potassium chloride, which should be called K+.) The values for these two keys describe when a given agonist treatment began and ended, respectively. They should be integers.
 
 TODO:
 - investigate pd.concat FutureWarning about concating empty stuff
@@ -40,6 +40,5 @@ TODO:
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
 - maybe add config options to change properties (size, color, ...) of the graphs
 - switch to uv
-- implement a GUI version
 - implement graphical metadata editor
 - implement user friendly error system
