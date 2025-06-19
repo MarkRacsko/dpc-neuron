@@ -8,9 +8,9 @@ from matplotlib.figure import Figure
 from typing import Optional
 
 class SubDir:
-    def __init__(self, path: Path, report_config: dict[str, str]) -> None:
+    def __init__(self, path: Path, report_name: str) -> None:
         self.path = path
-        self.report_path = path / f"{report_config["name"]}{path.name}{report_config["extension"]}"
+        self.report_path = path / f"{report_name}{path.name}.xlsx"
         self.treatment_col_names: list[str] = []
         self.treatment_windows: dict[str, slice[int]] = {}
         self.report: Optional[pd.DataFrame] = None

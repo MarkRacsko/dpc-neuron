@@ -27,7 +27,7 @@ class DataAnalyzer:
             subdir_path (Path): Path to this subdirectory in the target directory we are processing.
             repeat (bool): The --repeat command line flag as a bool.
         """
-        instance = SubDir(subdir_path, self.config["report"])
+        instance = SubDir(subdir_path, self.config["output"]["report_name"])
         instance.preprocessing(self.repeat)
         self._subdirs.append(instance)
 

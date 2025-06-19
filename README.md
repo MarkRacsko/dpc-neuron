@@ -22,10 +22,9 @@ This file consists of 3 sections:
     - method: What method to use for determining if cells reacted to an agonist. Valid values are "baseline", "previous", and "derivative".
     - SD_multiplier: A number (doesn't have to be an integer, decimal separator for non-integers must be dot not comma) describing by how many standard deviations of the baseline must a cell's response amplitude exceed the basis of comparison (the baseline mean, the mean of the last few timepoints of the previous agonist window, or the mean of the baseline's first order derivative) to be considered to have reacted to that agonist.
     - smoothing_range: An odd integer number describing the window size used for the smoothing step. Each value in a cell's data is replaced by the mean of neighbouring values in a window of this size. The size is the total number of elements not the number of neighbours to consider on each side, which is why it must be odd.
-- report: The final file name for subfolder level reports will be constructed from this name, the name of this subfolder, and this extension, concatenated in this order.
-    - name: The first element of the name
-    - extension: The file extension, but don't change this one because only .xlsx is supported. (For now.)
-- tabulated_report: The final file name for the overall summary report, works the same way as the previous section.
+- output:
+    - report_name: The final file name for subfolder level reports will be constructed from this name, the name of this subfolder, and the .xlsx extension.
+    - summary_name: The final file name for the overall summary report.
 
 ### The metadata files
 These have 2 section:
@@ -43,3 +42,4 @@ TODO:
 - switch to uv
 - implement a GUI version
 - implement graphical metadata editor
+- implement user friendly error system

@@ -4,10 +4,6 @@ method = "previous"
 SD_multiplier = 2
 smoothing_range = 5
 
-[report]
-name = "result_"
-extension = ".xlsx"
-
-[tabulated_report]
-name = "summary"
-extension = ".xlsx"
+[output]
+report_name = "report_"
+summary_name = "summary.xlsx"
