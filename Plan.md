@@ -64,6 +64,17 @@
     - the analyzer class iterates over its list of Subdir instances and collects their reports into a dictionary where the keys are the column names in the report. For each report, we check if its columns are in the dict already, if not we add them as a new key, then either way, we add the report's content to the list of reports stored under that key.
     - dict[list[str], list[Series[int]]]
     - then we simply iterate over this dict as key value pairs. For each key, we create a new sheet in the summary, then add all the results from the same conditions into a single df as new columns, column names being the name/date of the experiment
+
+- Graphical config file editor idea:
+    - merge report and tabulated report, since .xlsx is the only output format I want to support and it is sufficient
+    - have one column with labels and one with text boxes, a dropdown menu for the method, and a Browse button for the folder
+
+- Metadata editor idea:
+    - textboxes for the conditions
+    - 3 labels and textboxes for the name, begin, end fields
+    - add, edit, remove buttons
+    - the editor is a class with its mechanism implemented using methods and the individual treatments are stored in Treatment objects
+    - Treatment is a dataclass with name, begin, end attrs
     
 # Planned structure of the project
 What the program should be doing:
