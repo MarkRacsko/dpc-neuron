@@ -6,4 +6,4 @@ smoothing_range = 5
 
 [output]
 report_name = "report_"
-summary_name = "summary.xlsx"
+summary_name = "summary"

@@ -40,8 +40,8 @@ class DataAnalyzer:
                                smoothing_window=self.config["input"]["smoothing_range"])
 
     def tabulate_data(self):
-        sum_conf = self.config["tabulated_report"]
-        summary_file_name: Path = self.config["input"]["target_folder"] / f"{sum_conf["name"]}{sum_conf["extension"]}"
+        sum_conf = self.config["output"]
+        summary_file_name: Path = self.config["input"]["target_folder"] / f"{sum_conf["summary_name"]}.xlsx"
         for subdir in self._subdirs:
             
             subdir.load_summary()
