@@ -5,6 +5,7 @@ from tkinter import filedialog
 from typing import Any
 from pathlib import Path
 from .analyzer import DataAnalyzer
+from collections import namedtuple
 
 FONT_L = ("Arial", 18)
 FONT_M = ("Arial", 16)
@@ -19,11 +20,15 @@ SECTION_2_BASE_Y = 340
 EDITOR_PADDING_X = 200
 OFFSCREEN_X = 500
 BOTTOM_BUTTONS_Y = 480
+BOTTOM_BUTTONS_X = 35
+BOTTOM_BUTTONS_PADDING_X =100
 
 DISPLAY_MODES: dict[str, str] = {
-    "config": "460x600",
+    "config": "460x480",
     "metadata": "460x800"
 }
+
+Treatment = namedtuple("Treatment", ["name", "begin", "end"])
 
 class GUI:
     def __init__(self, config: dict[str, dict[str, Any]]) -> None:
@@ -36,7 +41,7 @@ class GUI:
         self.current_mode.trace_add("write", self.resize_window)
         
         
-        self.root.resizable(False, False)
+        self.root.resizable(False, True)
 
         # Browse target folder
         self.target_label = tk.Label(self.root, text="Data folder:", font=FONT_M)
@@ -89,7 +94,7 @@ class GUI:
 
         # Folder selector button that only appears in metadata mode
         self.metadata_path = tk.StringVar()
-        self.metabata_browse_button = tk.Button(self.root, text="Select\nfolder", font=FONT_M, command=self.select_measurement_folder)
+        self.metabata_browse_button = tk.Button(self.root, text="Select\nfolder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
 
         # Target folder / Ratiometric dye button
         self.sec_1_key_1_label = tk.Label(self.root, font=FONT_M)
@@ -140,7 +145,14 @@ class GUI:
         self.sec_2_value_3_box = tk.Text(self.root, width=10, height=1, font=FONT_M)
 
         # Save button for config file
-        self.save_config_button = tk.Button(self.root, text="Save", font=FONT_L, command=self.save_config)        
+        self.save_config_button = tk.Button(self.root, text="Save", font=FONT_L, command=self.save_config)
+
+        # Metadata editor buttons
+        self.metadata_add_button = tk.Button(self.root, text="Add", font=FONT_M)
+        self.metadata_edit_button = tk.Button(self.root, text="Edit", font=FONT_M)
+        self.metadata_delete_button = tk.Button(self.root, text="Delete", font=FONT_M)
+        self.metadata_save_button = tk.Button(self.root, text="Save", font=FONT_M)
+        self.metadata_buttons = [self.metadata_add_button, self.metadata_edit_button, self.metadata_delete_button, self.metadata_save_button]
 
         self.root.update_idletasks()
         # this line is here and not at the beginning so that the window won't jump around:
@@ -220,8 +232,10 @@ class GUI:
         self.sec_2_key_3_label.config(text="")
         self.sec_2_value_3_box.place(x=OFFSCREEN_X)
 
-        self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=BOTTOM_BUTTONS_Y, width=self.config_button.winfo_width())
-
+        self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=SECTION_2_BASE_Y + 10 + 3 * PADDING_Y, width=self.config_button.winfo_width(), height=30)
+        for button in self.metadata_buttons:
+            button.place(x=OFFSCREEN_X)
+        self.display_treatments({})
 
     def metadata_button_press(self) -> None:
         """
@@ -229,7 +243,9 @@ class GUI:
         and buttons appropriately.
         """
         if not self.metadata_path.get():
-            self.select_measurement_folder()
+            self.select_measurement_folder_and_load_metadata()
+
+        treatments = self.metadata["treatments"]
         self.current_mode.set("metadata")
         self.sec_1_label.config(text="Conditions section")
         self.sec_1_key_1_label.config(text="Ratiometric dye:")
@@ -254,6 +270,11 @@ class GUI:
         self.sec_2_key_3_label.config(text="End:")
         self.sec_2_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
 
+        self.save_config_button.place(x=OFFSCREEN_X)
+        for i, button in enumerate(self.metadata_buttons):
+            button.place(x=BOTTOM_BUTTONS_X + i * BOTTOM_BUTTONS_PADDING_X, y=BOTTOM_BUTTONS_Y, width=90, height=30)       
+        self.display_treatments(treatments)
+
     def ratiometric_switch(self) -> None:
         current_state = self.sec_1_value_1_button["text"]
 
@@ -261,6 +282,26 @@ class GUI:
             self.sec_1_value_1_button.config(text="0")
         else:
             self.sec_1_value_1_button.config(text="1")
+
+    def display_treatments(self, treatments: dict[str, dict[str, int]]) -> None:
+        labels = []
+        for name in treatments.keys():
+            labels.append(tk.Label(self.root, text=name, font=FONT_S))
+            for key in treatments[name].keys():
+                labels.append(tk.Label(self.root, text=key, font=FONT_S))
+        
+        def x_gen():
+            while True:
+                yield 0
+                yield 100
+                yield 200
+
+        x_vals = x_gen()
+        y_increment = 0
+        for i, label in enumerate(labels):
+            if i % 3 == 0 and i != 0:
+                y_increment += 1
+            label.place(x=BASE_X + next(x_vals), y=BOTTOM_BUTTONS_Y + 40 + y_increment * PADDING_Y)
 
     def select_folder(self) -> None:
         """Called when pressing the button to select the output folder where results will be saved.
@@ -270,7 +311,7 @@ class GUI:
             self.target_path.set(path)
             self.target_label.config(text="Selected: yes")
     
-    def select_measurement_folder(self) -> None:
+    def select_measurement_folder_and_load_metadata(self) -> None:
         path = filedialog.askdirectory(title="Select measurement folder")
         if path:
             self.metadata_path.set(path)
