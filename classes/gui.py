@@ -10,13 +10,16 @@ FONT_S = ("Arial", 16)
 
 BASE_X = 20
 BASE_Y = 20
-PADDING_Y = 40
+PADDING_Y = 30
 PADDING_X = 120
+SECTION_1_BASE_Y = 180
+SECTION_2_BASE_Y = 340
+EDITOR_PADDING_X = 200
+OFFSCREEN_X = 500
 
 DISPLAY_MODES: dict[str, str] = {
-    "default": "460x250",
-    "config": "460x400",
-    "metadata": "460x400"
+    "config": "460x600",
+    "metadata": "460x800"
 }
 
 class GUI:
@@ -25,7 +28,7 @@ class GUI:
         self.root = tk.Tk()
         self.root.title("Ca Measurement Analyzer")
         
-        self.current_mode = tk.StringVar(value="default")
+        self.current_mode = tk.StringVar(value="config")
         self.current_mode.trace_add("write", self.resize_window)
         
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
@@ -33,66 +36,99 @@ class GUI:
 
         # Browse target folder
         self.target_label = tk.Label(self.root, text="Data folder:", font=FONT_S)
-        self.target_label.place(x=BASE_X, y=BASE_Y)
-        self.path_label = tk.Label(self.root, text="Selected: not yet", font=FONT_S)
-        self.path_label.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y)
         self.target_path = tk.StringVar(value="./data")
-        self.target_button = tk.Button(self.root, text="Browse...", font=FONT_S, command=self.select_folder)
-        self.target_button.place(x=BASE_X + PADDING_X, y=BASE_Y, width=100, height=30)
         
         # Processing checkbox
         self.check_p_state = tk.IntVar()
         self.check_p = tk.Checkbutton(self.root, text="Process", font=FONT_S, variable=self.check_p_state)
-        self.check_p.place(x=BASE_X, y=BASE_Y + PADDING_Y)
+        self.check_p.place(x=BASE_X, y=BASE_Y)
 
         # Tabulation checkbox
         self.check_t_state = tk.IntVar()
         self.check_t = tk.Checkbutton(self.root, text="Tabulate", font=FONT_S, variable=self.check_t_state)
-        self.check_t.place(x=BASE_X, y=BASE_Y + 2* PADDING_Y)
+        self.check_t.place(x=BASE_X, y=BASE_Y + PADDING_Y)
 
         # Graphing checkbox
         self.check_g_state = tk.IntVar()
         self.check_g = tk.Checkbutton(self.root, text="Make graphs", font=FONT_S, variable=self.check_g_state)
-        self.check_g.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y + PADDING_Y)
+        self.check_g.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y)
 
         # Repeat checkbox
         self.check_r_state = tk.IntVar()
         self.check_r = tk.Checkbutton(self.root, text="Repeat", font=FONT_S, variable=self.check_r_state)
-        self.check_r.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y + 2 * PADDING_Y)
+        self.check_r.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y + PADDING_Y)
         
         # Analyze button
         self.analyze_button = tk.Button(self.root, text="Analyze", font=FONT_L, command=self.analyze_button_press)
-        self.analyze_button.place(x=BASE_X, y=4 * PADDING_Y, width=120, height=60)
+        self.analyze_button.place(x=BASE_X, y=3 * PADDING_Y, width=120, height=60)
 
         # Config button
         self.config_button = tk.Button(self.root, text="Edit\nconfig", font=FONT_S, command=self.config_button_press)
-        self.config_button.place(x=BASE_X + 1.2 * PADDING_X, y=4 * PADDING_Y, width=120, height=60)
+        self.config_button.place(x=BASE_X + 1.2 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
 
         # Metadata button
         self.metadata_button = tk.Button(self.root, text="Edit\nmetadata", font=FONT_S, command=self.metadata_button_press)
-        self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=4 * PADDING_Y, width=120, height=60)
+        self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
 
         # Config editor section
-        if self.current_mode.get() == "config":
-            pass
+        # How this bloody mess actually work:
+        # All items that appear on screen are defined here, and ones whose properties do not need to change have all
+        # those properties set and are placed on the screen.
+        # Items that change between editor modes have the changing values set in the appropriate button press function.
+        # config_button_press is called once after all items have been assigned so that the program can start in the
+        # config layout without having to do a lot of annoying refactoring. I know this is not a good solution, I might
+        # do it properly at some point.
+        self.sec_1_label = tk.Label(self.root, font=FONT_L)
+        self.sec_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
 
-        # Metadata editor section
-        if self.current_mode.get() == "metadata":
-            pass
+        self.metadata_path = tk.StringVar()
+        self.metabata_browse_button = tk.Button(self.root, text="Browse...",font=FONT_S, command=self.select_measurement_folder)
 
+        self.sec_1_key_1_label = tk.Label(self.root, font=FONT_S)
+        self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.sec_1_value_1_button = tk.Button(self.root)
+        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
+
+        self.sec_1_key_2_label = tk.Label(self.root, font=FONT_S)
+        self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.sec_1_value_2_box = tk.Text(self.root, width=10, height=1, font=FONT_S)
+        self.sec_1_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
+
+        self.sec_1_key_3_label = tk.Label(self.root, font=FONT_S)
+        self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.sec_1_value_3_box = tk.Text(self.root, width=10, height=1, font=FONT_S)
+        self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
+
+        self.sec_1_key_4_label = tk.Label(self.root, font=FONT_S)
+        self.sec_1_key_4_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
+        self.sec_1_value_4_box = tk.Text(self.root, width=10, height=1, font=FONT_S)
+        # the 4th textbox needs to be moved offscreen when we're editing metadata so it's placement is determined
+        # by the Edit buttons
+
+        self.sec_2_label = tk.Label(self.root, font=FONT_L)
+        self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
+
+        self.sec_2_key_1_label = tk.Label(self.root, font=FONT_S)
+        self.sec_2_key_1_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.sec_2_value_1_box = tk.Text(self.root, width=10, height=1, font=FONT_S)
+        self.sec_2_value_1_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
+
+        self.sec_2_key_2_label = tk.Label(self.root, font=FONT_S)
+        self.sec_2_key_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.sec_2_value_2_box = tk.Text(self.root, width=10, height=1, font=FONT_S)
+        self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+
+        self.sec_2_key_3_label = tk.Label(self.root, font=FONT_S)
+        self.sec_2_key_3_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
+        self.sec_2_value_3_box = tk.Text(self.root, width=10, height=1, font=FONT_S)
+        
+
+        self.config_button_press() # this is here so the program can start in the config layout
         self.root.protocol("WM_DELETE_WINDOW", exit) # Regression but I'm willing to accept that for now.
         self.root.mainloop()
     
     def resize_window(self, *args):
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
-
-    def select_folder(self) -> None:
-        """Called when pressing the button to select the output folder where results will be saved.
-        """
-        path = filedialog.askdirectory(title="Select a folfer")
-        if path:
-            self.target_path.set(path)
-            self.target_label.config(text="Selected: yes")
 
     def analyze_button_press(self) -> None:
         data_path = Path(self.target_path.get())
@@ -129,7 +165,65 @@ class GUI:
             data_analyzer.graph_data()
 
     def config_button_press(self) -> None:
+        """
+        Sets the mode (which determines window size) to config and changes the editor section's labels, textboxes,
+        and buttons appropriately.
+        """
         self.current_mode.set("config")
+        self.sec_1_label.config(text="Input section")
+        self.sec_1_key_1_label.config(text="Target folder:")
+        self.sec_1_value_1_button.config(text="Browse...",font=FONT_S, command=self.select_folder)
+        self.sec_1_key_2_label.config(text="Method:")
+        self.sec_1_key_3_label.config(text="SD multiplier:")
+        self.sec_1_key_4_label.config(text="Smoothing range:")
+        self.sec_1_value_4_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 4 * PADDING_Y)
+        
+        self.metabata_browse_button.place(x=OFFSCREEN_X)
+        self.sec_2_label.config(text="Output section")
+        self.sec_2_key_1_label.config(text="Report name:")
+        self.sec_2_key_2_label.config(text="Summary name:")
+        self.sec_2_key_3_label.config(text="")
+        self.sec_2_value_3_box.place(x=OFFSCREEN_X)
+
 
     def metadata_button_press(self) -> None:
+        """
+        Sets the mode (which determines window size) to metadata and changes the editor section's labels, textboxes,
+        and buttons appropriately.
+        """
         self.current_mode.set("metadata")
+        self.sec_1_label.config(text="Conditions section")
+        self.sec_1_key_1_label.config(text="Ratiometric dye:")
+        self.sec_1_value_1_button.config(text="1",font=FONT_S, command=self.ratiometric_switch)
+        self.sec_1_key_2_label.config(text="Group 1:")
+        self.sec_1_key_3_label.config(text="Group 2:")
+        self.sec_1_key_4_label.config(text="")
+        self.sec_1_value_4_box.place(x=OFFSCREEN_X)
+
+        self.metabata_browse_button.place(x=BASE_X + 2.4 * PADDING_X, y=SECTION_1_BASE_Y)
+        self.sec_2_label.config(text="Treatment section")
+        self.sec_2_key_1_label.config(text="Agonist:")
+        self.sec_2_key_2_label.config(text="Begin:")
+        self.sec_2_key_3_label.config(text="End:")
+        self.sec_2_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
+
+    def ratiometric_switch(self) -> None:
+        current_state = self.sec_1_value_1_button["text"]
+
+        if current_state == "1":
+            self.sec_1_value_1_button.config(text="0")
+        else:
+            self.sec_1_value_1_button.config(text="1")
+
+    def select_folder(self) -> None:
+        """Called when pressing the button to select the output folder where results will be saved.
+        """
+        path = filedialog.askdirectory(title="Select a folfer")
+        if path:
+            self.target_path.set(path)
+            self.target_label.config(text="Selected: yes")
+    
+    def select_measurement_folder(self) -> None:
+        path = filedialog.askdirectory(title="Select measurement folder")
+        if path:
+            self.metadata_path.set(path)
