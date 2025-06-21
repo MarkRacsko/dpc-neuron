@@ -15,11 +15,12 @@ BASE_X = 20
 BASE_Y = 20
 PADDING_Y = 30
 PADDING_X = 120
-SECTION_1_BASE_Y = 180
-SECTION_2_BASE_Y = 340
+PANEL_Y = 160
+SECTION_1_BASE_Y = 20 #180
+SECTION_2_BASE_Y = 180 #340
 EDITOR_PADDING_X = 200
 OFFSCREEN_X = 500
-BOTTOM_BUTTONS_Y = 480
+BOTTOM_BUTTONS_Y = 310
 BOTTOM_BUTTONS_X = 35
 BOTTOM_BUTTONS_PADDING_X =100
 
@@ -30,7 +31,7 @@ DISPLAY_MODES: dict[str, str] = {
 
 Treatment = namedtuple("Treatment", ["name", "begin", "end"])
 
-class GUI:
+class MainWindow:
     def __init__(self, config: dict[str, dict[str, Any]]) -> None:
         self.config = config
         self.metadata = {}
@@ -79,80 +80,16 @@ class GUI:
         self.metadata_button = tk.Button(self.root, width=8, text="Edit\nmetadata", font=FONT_M, command=self.metadata_button_press)
         self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
 
-        # Config editor section
-        # How this bloody mess actually works:
-        # All items that appear on screen are defined here, and ones whose properties do not need to change have all
-        # those properties set and are placed on the screen.
-        # Items that change between editor modes have the changing values set in the appropriate button press function.
-        # config_button_press is called once after all items have been assigned so that the program can start in the
-        # config layout without having to do a lot of annoying refactoring. I know this is not a good solution, I might
-        # do it properly at some point.
+        self.root.update_idletasks()
+        # Config editor panel
+        self.config_panel = ConfigFrame(self.root, self.config, self.config_button.winfo_width(), width=460, height=320)
 
-        # Input / Conditions section
-        self.sec_1_label = tk.Label(self.root, font=FONT_L)
-        self.sec_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
-
+        # Metadata editor panel
+        self.metadata_panel = MetadataFrame(self.root, width=460, height=640)
         # Folder selector button that only appears in metadata mode
         self.metadata_path = tk.StringVar()
         self.metabata_browse_button = tk.Button(self.root, text="Select\nfolder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
-
-        # Target folder / Ratiometric dye button
-        self.sec_1_key_1_label = tk.Label(self.root, font=FONT_M)
-        self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
-        self.sec_1_value_1_button = tk.Button(self.root)
-        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
-
-        # Method menu / Group1 textbox
-        self.sec_1_key_2_label = tk.Label(self.root, font=FONT_M)
-        self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
-        self.selected_method = tk.StringVar()
-        self.method_options: list[str] = ["baseline", "previous", "derivative"]
-        self.sec_1_value_2_box = tk.Text(self.root, width=15, height=1, font=FONT_M)
-        self.sec_1_value_2_menu = tk.OptionMenu(self.root, self.selected_method, *self.method_options)
         
-        # SD_multiplier / Group2 textbox
-        self.sec_1_key_3_label = tk.Label(self.root, font=FONT_M)
-        self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
-        self.sec_1_value_3_box = tk.Text(self.root, width=15, height=1, font=FONT_M)
-        self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
-
-        # Smoothing range textbox / None
-        self.sec_1_key_4_label = tk.Label(self.root, font=FONT_M)
-        self.sec_1_key_4_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
-        self.sec_1_value_4_box = tk.Text(self.root, width=10, height=1, font=FONT_M)
-        # the 4th textbox needs to be moved offscreen when we're editing metadata so it's placement is determined
-        # by the Edit buttons
-
-        # Output / Treatments section
-        self.sec_2_label = tk.Label(self.root, font=FONT_L)
-        self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
-
-        # Report name / Agonist textbox
-        self.sec_2_key_1_label = tk.Label(self.root, font=FONT_M)
-        self.sec_2_key_1_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
-        self.sec_2_value_1_box = tk.Text(self.root, width=10, height=1, font=FONT_M)
-        self.sec_2_value_1_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
-
-        # Summary name / Begin textbox
-        self.sec_2_key_2_label = tk.Label(self.root, font=FONT_M)
-        self.sec_2_key_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-        self.sec_2_value_2_box = tk.Text(self.root, width=10, height=1, font=FONT_M)
-        self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-
-        # None / End textbox
-        self.sec_2_key_3_label = tk.Label(self.root, font=FONT_M)
-        self.sec_2_key_3_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
-        self.sec_2_value_3_box = tk.Text(self.root, width=10, height=1, font=FONT_M)
-
-        # Save button for config file
-        self.save_config_button = tk.Button(self.root, text="Save", font=FONT_L, command=self.save_config)
-
-        # Metadata editor buttons
-        self.metadata_add_button = tk.Button(self.root, text="Add", font=FONT_M)
-        self.metadata_edit_button = tk.Button(self.root, text="Edit", font=FONT_M)
-        self.metadata_delete_button = tk.Button(self.root, text="Delete", font=FONT_M)
-        self.metadata_save_button = tk.Button(self.root, text="Save", font=FONT_M)
-        self.metadata_buttons = [self.metadata_add_button, self.metadata_edit_button, self.metadata_delete_button, self.metadata_save_button]
 
         self.root.update_idletasks()
         # this line is here and not at the beginning so that the window won't jump around:
@@ -204,38 +141,9 @@ class GUI:
         and buttons appropriately.
         """
         self.current_mode.set("config")
-        self.sec_1_label.config(text="Input section")
-        self.sec_1_key_1_label.config(text="Target folder:")
-        self.sec_1_value_1_button.config(text="Browse...",font=FONT_M, command=self.select_folder)
-        self.sec_1_key_2_label.config(text="Method:")
-        self.selected_method.set(self.config["input"]["method"])
-        self.sec_1_value_2_menu.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
-        self.sec_1_value_2_box.place(x=OFFSCREEN_X)
-        self.sec_1_value_2_menu.config(width=10)
-        self.sec_1_key_3_label.config(text="SD multiplier:")
-        self.sec_1_value_3_box.delete("1.0", "end")
-        self.sec_1_value_3_box.insert("1.0", self.config["input"]["SD_multiplier"])
-        self.sec_1_value_3_box.config(width=10)
-        self.sec_1_key_4_label.config(text="Smoothing range:")
-        self.sec_1_value_4_box.delete("1.0", "end")
-        self.sec_1_value_4_box.insert("1.0", self.config["input"]["smoothing_range"])
-        self.sec_1_value_4_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 4 * PADDING_Y)
-        
+        self.config_panel.place(x=0, y=PANEL_Y)
+        self.metadata_panel.place(x=OFFSCREEN_X)    
         self.metabata_browse_button.place(x=OFFSCREEN_X)
-        self.sec_2_label.config(text="Output section")
-        self.sec_2_key_1_label.config(text="Report name:")
-        self.sec_2_value_1_box.delete("1.0", "end")
-        self.sec_2_value_1_box.insert("1.0", self.config["output"]["report_name"])
-        self.sec_2_key_2_label.config(text="Summary name:")
-        self.sec_2_value_2_box.delete("1.0", "end")
-        self.sec_2_value_2_box.insert("1.0", self.config["output"]["summary_name"])
-        self.sec_2_key_3_label.config(text="")
-        self.sec_2_value_3_box.place(x=OFFSCREEN_X)
-
-        self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=SECTION_2_BASE_Y + 10 + 3 * PADDING_Y, width=self.config_button.winfo_width(), height=30)
-        for button in self.metadata_buttons:
-            button.place(x=OFFSCREEN_X)
-        self.display_treatments({})
 
     def metadata_button_press(self) -> None:
         """
@@ -245,63 +153,85 @@ class GUI:
         if not self.metadata_path.get():
             self.select_measurement_folder_and_load_metadata()
 
-        treatments = self.metadata["treatments"]
         self.current_mode.set("metadata")
-        self.sec_1_label.config(text="Conditions section")
-        self.sec_1_key_1_label.config(text="Ratiometric dye:")
-        self.sec_1_value_1_button.config(text=f"{self.metadata["conditions"]["ratiometric_dye"]}", font=FONT_M, command=self.ratiometric_switch)
-        self.sec_1_key_2_label.config(text="Group 1:")
-        self.sec_1_value_2_box.delete("1.0", "end")
-        self.sec_1_value_2_box.insert("1.0", self.metadata["conditions"]["group1"])
-        self.sec_1_value_2_box.config(width=15)
-        self.sec_1_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
-        self.sec_1_value_2_menu.place(x=OFFSCREEN_X)
-        self.sec_1_key_3_label.config(text="Group 2:")
-        self.sec_1_value_3_box.delete("1.0", "end")
-        self.sec_1_value_3_box.insert("1.0", self.metadata["conditions"]["group2"])
-        self.sec_1_value_3_box.config(width=15)
-        self.sec_1_key_4_label.config(text="")
-        self.sec_1_value_4_box.place(x=OFFSCREEN_X)
-
-        self.metabata_browse_button.place(x=BASE_X + 2.4 * PADDING_X, y=SECTION_1_BASE_Y, width=self.metadata_button.winfo_width(), height=self.metadata_button.winfo_height())
-        self.sec_2_label.config(text="Treatment section")
-        self.sec_2_key_1_label.config(text="Agonist:")
-        self.sec_2_key_2_label.config(text="Begin:")
-        self.sec_2_key_3_label.config(text="End:")
-        self.sec_2_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
-
-        self.save_config_button.place(x=OFFSCREEN_X)
-        for i, button in enumerate(self.metadata_buttons):
-            button.place(x=BOTTOM_BUTTONS_X + i * BOTTOM_BUTTONS_PADDING_X, y=BOTTOM_BUTTONS_Y, width=90, height=30)       
-        self.display_treatments(treatments)
-
-    def ratiometric_switch(self) -> None:
-        current_state = self.sec_1_value_1_button["text"]
-
-        if current_state == "1":
-            self.sec_1_value_1_button.config(text="0")
-        else:
-            self.sec_1_value_1_button.config(text="1")
-
-    def display_treatments(self, treatments: dict[str, dict[str, int]]) -> None:
-        labels = []
-        for name in treatments.keys():
-            labels.append(tk.Label(self.root, text=name, font=FONT_S))
-            for key in treatments[name].keys():
-                labels.append(tk.Label(self.root, text=key, font=FONT_S))
+        self.metadata_panel.metadata = self.metadata
+        self.metadata_panel.update_frame()
+        self.config_panel.place(x=OFFSCREEN_X)
+        self.metadata_panel.place(x=0, y=PANEL_Y)
+        self.metabata_browse_button.place(x=BASE_X + 2.4 * PADDING_X, y=180, width=self.metadata_button.winfo_width(), height=self.metadata_button.winfo_height())
+    
+    def select_measurement_folder_and_load_metadata(self) -> None:
+        path = filedialog.askdirectory(title="Select measurement folder")
+        if path:
+            self.metadata_path.set(path)
         
-        def x_gen():
-            while True:
-                yield 0
-                yield 100
-                yield 200
+            with open(Path(self.metadata_path.get()) / "metadata.toml", "r") as f:
+                self.metadata = toml.load(f)
 
-        x_vals = x_gen()
-        y_increment = 0
-        for i, label in enumerate(labels):
-            if i % 3 == 0 and i != 0:
-                y_increment += 1
-            label.place(x=BASE_X + next(x_vals), y=BOTTOM_BUTTONS_Y + 40 + y_increment * PADDING_Y)
+
+class ConfigFrame(tk.Frame):
+    def __init__(self, parent, config: dict[str, dict[str, Any]], save_button_size: int, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.target_path = tk.StringVar(value="./data")
+        self.config = config
+        # Input section
+        self.sec_1_label = tk.Label(self, text="Input section", font=FONT_L)
+        self.sec_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
+
+        # Target folder selection
+        self.sec_1_key_1_label = tk.Label(self, text="Target folder:", font=FONT_M)
+        self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.sec_1_value_1_button = tk.Button(self, text="Browse...",font=FONT_M, command=self.select_folder)
+        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
+
+        # Method
+        self.sec_1_key_2_label = tk.Label(self, text="Method:", font=FONT_M)
+        self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.selected_method = tk.StringVar()
+        self.selected_method.set(self.config["input"]["method"])
+        self.method_options: list[str] = ["baseline", "previous", "derivative"]
+        self.sec_1_value_2_menu = tk.OptionMenu(self, self.selected_method, *self.method_options)
+        self.sec_1_value_2_menu.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y, width=120)
+
+        # SD multiplier
+        self.sec_1_key_3_label = tk.Label(self, text="SD multiplier:", font=FONT_M)
+        self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.sec_1_value_3_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
+        self.sec_1_value_3_box.delete("1.0", "end")
+        self.sec_1_value_3_box.insert("1.0", self.config["input"]["SD_multiplier"])
+
+        # Smoothing range
+        self.sec_1_key_4_label = tk.Label(self, text="Smoothing range:", font=FONT_M)
+        self.sec_1_key_4_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
+        self.sec_1_value_4_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_1_value_4_box.delete("1.0", "end")
+        self.sec_1_value_4_box.insert("1.0", self.config["input"]["smoothing_range"])
+        self.sec_1_value_4_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 4 * PADDING_Y)
+
+        # Output section
+        self.sec_2_label = tk.Label(self, text="Output section", font=FONT_L)
+        self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
+
+        # Report name
+        self.sec_2_key_1_label = tk.Label(self, text="Report name:", font=FONT_M)
+        self.sec_2_key_1_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.sec_2_value_1_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_2_value_1_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.sec_2_value_1_box.delete("1.0", "end")
+        self.sec_2_value_1_box.insert("1.0", self.config["output"]["report_name"])
+
+        # Summary name
+        self.sec_2_key_2_label = tk.Label(self, text="Summary name:", font=FONT_M)
+        self.sec_2_key_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.sec_2_value_2_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.sec_2_value_2_box.delete("1.0", "end")
+        self.sec_2_value_2_box.insert("1.0", self.config["output"]["summary_name"])
+        
+        # Save button for config file
+        self.save_config_button = tk.Button(self, text="Save", font=FONT_L, command=self.save_config)
+        self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=SECTION_2_BASE_Y + 10 + 3 * PADDING_Y, width=save_button_size, height=30)
 
     def select_folder(self) -> None:
         """Called when pressing the button to select the output folder where results will be saved.
@@ -309,15 +239,6 @@ class GUI:
         path = filedialog.askdirectory(title="Select a folfer")
         if path:
             self.target_path.set(path)
-            self.target_label.config(text="Selected: yes")
-    
-    def select_measurement_folder_and_load_metadata(self) -> None:
-        path = filedialog.askdirectory(title="Select measurement folder")
-        if path:
-            self.metadata_path.set(path)
-        if not self.metadata:
-            with open(Path(self.metadata_path.get()) / "metadata.toml", "r") as f:
-                self.metadata = toml.load(f)
 
     def save_config(self) -> None:
         self.config["input"]["target_folder"] = self.target_path.get()
@@ -333,3 +254,111 @@ class GUI:
 
         with open(Path("./config.toml"), "w") as f:
             toml.dump(self.config, f)
+
+
+class MetadataFrame(tk.Frame):
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.target_path = tk.StringVar(value="./data")
+        # The metadata dictionary needs to be initialized with the correct keys in order to avoid KeyErrors
+        self.metadata = {
+            "conditions": {
+                "ratiometric_dye": 1,
+                "group1": "",
+                "group2": ""
+            },
+            "treatments": {}
+            }
+
+    def update_frame(self):
+        """
+        Updates this Frame with the correct metadata information. The reason these things are here and not in __init__
+        is that this is how we can update the displayed information after the object is instantiated with dummy values.
+        """
+        # Conditions section
+        self.sec_1_label = tk.Label(self, text="Conditions section", font=FONT_L)
+        self.sec_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
+
+        # Ratiometric dye
+        self.sec_1_key_1_label = tk.Label(self, text="Ratiometric dye:", font=FONT_M)
+        self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.sec_1_value_1_button = tk.Button(self, text=f"{self.metadata["conditions"]["ratiometric_dye"]}", font=FONT_M, command=self.ratiometric_switch)
+        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
+
+        # Group1
+        self.sec_1_key_2_label = tk.Label(self, text="Group 1:", font=FONT_M)
+        self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.sec_1_value_2_box = tk.Text(self, width=15, height=1, font=FONT_M)
+        self.sec_1_value_2_box.delete("1.0", "end")
+        self.sec_1_value_2_box.insert("1.0", self.metadata["conditions"]["group1"])
+        self.sec_1_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
+
+        # Group2
+        self.sec_1_key_3_label = tk.Label(self, text="Group 2:", font=FONT_M)
+        self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.sec_1_value_3_box = tk.Text(self, width=15, height=1, font=FONT_M)
+        self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
+        self.sec_1_value_3_box.delete("1.0", "end")
+        self.sec_1_value_3_box.insert("1.0", self.metadata["conditions"]["group2"])
+
+        # Treatment section
+        self.sec_2_label = tk.Label(self, text="Treatment section", font=FONT_L)
+        self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
+
+        # Agonist
+        self.sec_2_key_1_label = tk.Label(self, text="Agonist:", font=FONT_M)
+        self.sec_2_key_1_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.sec_2_value_1_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_2_value_1_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
+
+        # Begin
+        self.sec_2_key_2_label = tk.Label(self, text="Begin:", font=FONT_M)
+        self.sec_2_key_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.sec_2_value_2_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+
+        # End
+        self.sec_2_key_3_label = tk.Label(self, text="End:", font=FONT_M)
+        self.sec_2_key_3_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
+        self.sec_2_value_3_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_2_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
+        
+        treatments = self.metadata["treatments"]
+        self.metadata_add_button = tk.Button(self, text="Add", font=FONT_M)
+        self.metadata_edit_button = tk.Button(self, text="Edit", font=FONT_M)
+        self.metadata_delete_button = tk.Button(self, text="Delete", font=FONT_M)
+        self.metadata_save_button = tk.Button(self, text="Save", font=FONT_M)
+        self.metadata_buttons = [self.metadata_add_button, self.metadata_edit_button, self.metadata_delete_button, self.metadata_save_button]
+
+        for i, button in enumerate(self.metadata_buttons):
+            button.place(x=BOTTOM_BUTTONS_X + i * BOTTOM_BUTTONS_PADDING_X, y=BOTTOM_BUTTONS_Y, width=90, height=30)       
+        self.update_idletasks()
+        self.display_treatments(treatments)
+
+    def ratiometric_switch(self) -> None:
+        current_state = self.sec_1_value_1_button["text"]
+
+        if current_state == "1":
+            self.sec_1_value_1_button.config(text="0")
+        else:
+            self.sec_1_value_1_button.config(text="1")
+
+    def display_treatments(self, treatments: dict[str, dict[str, int]]) -> None:
+        labels = []
+        for name in treatments.keys():
+            labels.append(tk.Label(self, text=name, font=FONT_S))
+            for key in treatments[name].keys():
+                labels.append(tk.Label(self, text=key, font=FONT_S))
+        
+        def x_gen():
+            while True:
+                yield 0
+                yield 100
+                yield 200
+
+        x_vals = x_gen()
+        y_increment = 0
+        for i, label in enumerate(labels):
+            if i % 3 == 0 and i != 0:
+                y_increment += 1
+            label.place(x=BASE_X + next(x_vals), y=BOTTOM_BUTTONS_Y + 40 + y_increment * PADDING_Y)

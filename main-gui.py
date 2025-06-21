@@ -1,5 +1,5 @@
 import toml
-from classes import GUI
+from classes import MainWindow
 from pathlib import Path
 
 def main():
@@ -12,7 +12,7 @@ def main():
         print("Config file needed. Should not have deleted it...")
         exit()
     
-    GUI(config)
+    MainWindow(config)
 
 if __name__ == "__main__":
     main()
