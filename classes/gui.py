@@ -34,7 +34,6 @@ Treatment = namedtuple("Treatment", ["name", "begin", "end"])
 class MainWindow:
     def __init__(self, config: dict[str, dict[str, Any]]) -> None:
         self.config = config
-        self.metadata = {}
         self.root = tk.Tk()
         self.root.title("Ca Measurement Analyzer")
         
@@ -85,12 +84,8 @@ class MainWindow:
         self.config_panel = ConfigFrame(self.root, self.config, self.config_button.winfo_width(), width=460, height=320)
 
         # Metadata editor panel
-        self.metadata_panel = MetadataFrame(self.root, width=460, height=640)
-        # Folder selector button that only appears in metadata mode
-        self.metadata_path = tk.StringVar()
-        self.metabata_browse_button = tk.Button(self.root, text="Select\nfolder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
-        
-
+        self.metadata_panel = MetadataFrame(self.root, self.metadata_button.winfo_width(), self.metadata_button.winfo_height(), width=460, height=640)
+    
         self.root.update_idletasks()
         # this line is here and not at the beginning so that the window won't jump around:
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
@@ -143,30 +138,18 @@ class MainWindow:
         self.current_mode.set("config")
         self.config_panel.place(x=0, y=PANEL_Y)
         self.metadata_panel.place(x=OFFSCREEN_X)    
-        self.metabata_browse_button.place(x=OFFSCREEN_X)
 
     def metadata_button_press(self) -> None:
         """
         Sets the mode (which determines window size) to metadata and changes the editor section's labels, textboxes,
         and buttons appropriately.
         """
-        if not self.metadata_path.get():
-            self.select_measurement_folder_and_load_metadata()
+
 
         self.current_mode.set("metadata")
-        self.metadata_panel.metadata = self.metadata
         self.metadata_panel.update_frame()
         self.config_panel.place(x=OFFSCREEN_X)
-        self.metadata_panel.place(x=0, y=PANEL_Y)
-        self.metabata_browse_button.place(x=BASE_X + 2.4 * PADDING_X, y=180, width=self.metadata_button.winfo_width(), height=self.metadata_button.winfo_height())
-    
-    def select_measurement_folder_and_load_metadata(self) -> None:
-        path = filedialog.askdirectory(title="Select measurement folder")
-        if path:
-            self.metadata_path.set(path)
-        
-            with open(Path(self.metadata_path.get()) / "metadata.toml", "r") as f:
-                self.metadata = toml.load(f)
+        self.metadata_panel.place(x=0, y=PANEL_Y)    
 
 
 class ConfigFrame(tk.Frame):
@@ -257,24 +240,24 @@ class ConfigFrame(tk.Frame):
 
 
 class MetadataFrame(tk.Frame):
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, button_width: int, button_height: int, **kwargs):
         super().__init__(parent, **kwargs)
         self.target_path = tk.StringVar(value="./data")
-        # The metadata dictionary needs to be initialized with the correct keys in order to avoid KeyErrors
-        self.metadata = {
-            "conditions": {
-                "ratiometric_dye": 1,
-                "group1": "",
-                "group2": ""
-            },
-            "treatments": {}
-            }
+        self.browse_button_width = button_width
+        self.browse_button_height = button_height
+        self.metadata_path = tk.StringVar()
 
     def update_frame(self):
         """
         Updates this Frame with the correct metadata information. The reason these things are here and not in __init__
         is that this is how we can update the displayed information after the object is instantiated with dummy values.
         """
+        # Folder selector button
+        self.metabata_browse_button = tk.Button(self, text="Select\nfolder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
+        self.metabata_browse_button.place(x=BASE_X + 2.4 * PADDING_X, y=BASE_Y, width=self.browse_button_width, height=self.browse_button_height)
+        if not self.metadata_path.get():
+            self.select_measurement_folder_and_load_metadata()
+        
         # Conditions section
         self.sec_1_label = tk.Label(self, text="Conditions section", font=FONT_L)
         self.sec_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
@@ -362,3 +345,11 @@ class MetadataFrame(tk.Frame):
             if i % 3 == 0 and i != 0:
                 y_increment += 1
             label.place(x=BASE_X + next(x_vals), y=BOTTOM_BUTTONS_Y + 40 + y_increment * PADDING_Y)
+
+    def select_measurement_folder_and_load_metadata(self) -> None:
+        path = filedialog.askdirectory(title="Select measurement folder")
+        if path:
+            self.metadata_path.set(path)
+        
+            with open(Path(self.metadata_path.get()) / "metadata.toml", "r") as f:
+                self.metadata = toml.load(f)

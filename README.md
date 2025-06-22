@@ -40,5 +40,8 @@ TODO:
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
 - maybe add config options to change properties (size, color, ...) of the graphs
 - switch to uv
-- implement graphical metadata editor
+- implement graphical metadata editor:
+    - add functionality to the buttons at the bottom
+    - properly place and format the table at the bottom
+    - figure out how to only display the current contents of the treatments dictionary
 - implement user friendly error system
