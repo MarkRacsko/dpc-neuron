@@ -28,7 +28,7 @@ BOTTOM_BUTTONS_PADDING_X =100
 
 DISPLAY_MODES: dict[str, str] = {
     "config": "460x480",
-    "metadata": "460x800"
+    "metadata": "460x700"
 }
 
 Treatment = namedtuple("Treatment", ["name", "begin", "end"])
@@ -289,11 +289,14 @@ class MetadataFrame(tk.Frame):
         # Treatment section
         self.sec_2_label = tk.Label(self, text="Treatment section", font=FONT_L)
         self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
-        
+
         treatments = self.metadata["treatments"]     
         self.update_idletasks()
         self.treatment_table = TreatmentTable(self, treatments, width=440, height=490)
         self.treatment_table.place(x=BASE_X + 40, y=BOTTOM_BUTTONS_Y)
+        
+        self.save_metadata_button = tk.Button(self, text="Save Metadata", font=FONT_M, command=self.save_metadata)
+        self.save_metadata_button.place(x=230, y=SECTION_2_BASE_Y + 40)
 
     def ratiometric_switch(self) -> None:
         current_state = self.sec_1_value_1_button["text"]
@@ -311,10 +314,15 @@ class MetadataFrame(tk.Frame):
             with open(Path(self.metadata_path.get()) / "metadata.toml", "r") as f:
                 self.metadata = toml.load(f)
 
-    def save_values(self) -> None:
+    def save_metadata(self) -> None:
         self.metadata["conditions"]["ratiometric_dye"] = self.sec_1_value_1_button["text"]
         self.metadata["conditions"]["group1"] = self.sec_1_value_2_box.get("1.0", "end-1c")
         self.metadata["conditions"]["group2"] = self.sec_1_value_3_box.get("1.0", "end-1c")
+        self.treatment_table.save_values()
+        self.metadata["treatments"] = self.treatment_table.treatments
+
+        with open(Path(self.metadata_path.get()) / "metadata.toml", "w") as metadata:
+            toml.dump(self.metadata, metadata)
 
 
 class TreatmentTable(tk.Frame):
@@ -335,9 +343,10 @@ class TreatmentTable(tk.Frame):
         self.end_label.place(x=self.COL_3_X, y=self.LABEL_ROW_Y)
         self.rows: list[list[tk.Entry]] = []
         
-        for _ in range(5):
+        for _ in range(len(self.treatments)):
             self.rows.append([str_entry(self), int_entry(self), int_entry(self)])
 
+        self.fill_values()
         self.update_display()
 
     def add_row(self) -> None:
@@ -351,3 +360,21 @@ class TreatmentTable(tk.Frame):
             for entry in row:
                 entry.place(x=next(x_pos), y=y_pos)
             y_pos += 30
+
+    def save_values(self) -> None:
+        self.treatments = {}
+        for row in self.rows:
+            name = row[0].get()
+            begin = int(row[1].get())
+            end = int(row[2].get())
+
+            self.treatments[name] = {"begin": begin, "end": end}
+
+
+    def fill_values(self) -> None:
+        for i, name in enumerate(self.treatments.keys()):
+            self.rows[i][0].delete(0, tk.END)
+            self.rows[i][0].insert(0, name)
+            for j, value in enumerate(self.treatments[name].values(), start=1):
+                self.rows[i][j].delete(0, tk.END)
+                self.rows[i][j].insert(0, str(value))
