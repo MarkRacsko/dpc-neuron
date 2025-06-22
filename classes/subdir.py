@@ -73,7 +73,7 @@ class SubDir:
         cell_ID: int = 0
         for file in measurement_files:
             file_result = pd.DataFrame(columns=output_columns)
-            if self.conditions["ratiometric_dye"]:
+            if self.conditions["ratiometric_dye"].lower() == "true":
                 cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window)
             else:
                 cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window)

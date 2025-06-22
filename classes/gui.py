@@ -6,6 +6,8 @@ from typing import Any
 from pathlib import Path
 from .analyzer import DataAnalyzer
 from collections import namedtuple
+from itertools import cycle
+from functions.gui_utilities import str_entry, int_entry
 
 FONT_L = ("Arial", 18)
 FONT_M = ("Arial", 16)
@@ -20,7 +22,7 @@ SECTION_1_BASE_Y = 20 #180
 SECTION_2_BASE_Y = 180 #340
 EDITOR_PADDING_X = 200
 OFFSCREEN_X = 500
-BOTTOM_BUTTONS_Y = 310
+BOTTOM_BUTTONS_Y = 220
 BOTTOM_BUTTONS_X = 35
 BOTTOM_BUTTONS_PADDING_X =100
 
@@ -287,64 +289,19 @@ class MetadataFrame(tk.Frame):
         # Treatment section
         self.sec_2_label = tk.Label(self, text="Treatment section", font=FONT_L)
         self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
-
-        # Agonist
-        self.sec_2_key_1_label = tk.Label(self, text="Agonist:", font=FONT_M)
-        self.sec_2_key_1_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
-        self.sec_2_value_1_box = tk.Text(self, width=10, height=1, font=FONT_M)
-        self.sec_2_value_1_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
-
-        # Begin
-        self.sec_2_key_2_label = tk.Label(self, text="Begin:", font=FONT_M)
-        self.sec_2_key_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-        self.sec_2_value_2_box = tk.Text(self, width=10, height=1, font=FONT_M)
-        self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-
-        # End
-        self.sec_2_key_3_label = tk.Label(self, text="End:", font=FONT_M)
-        self.sec_2_key_3_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
-        self.sec_2_value_3_box = tk.Text(self, width=10, height=1, font=FONT_M)
-        self.sec_2_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 3 * PADDING_Y)
         
-        treatments = self.metadata["treatments"]
-        self.metadata_add_button = tk.Button(self, text="Add", font=FONT_M)
-        self.metadata_edit_button = tk.Button(self, text="Edit", font=FONT_M)
-        self.metadata_delete_button = tk.Button(self, text="Delete", font=FONT_M)
-        self.metadata_save_button = tk.Button(self, text="Save", font=FONT_M)
-        self.metadata_buttons = [self.metadata_add_button, self.metadata_edit_button, self.metadata_delete_button, self.metadata_save_button]
-
-        for i, button in enumerate(self.metadata_buttons):
-            button.place(x=BOTTOM_BUTTONS_X + i * BOTTOM_BUTTONS_PADDING_X, y=BOTTOM_BUTTONS_Y, width=90, height=30)       
+        treatments = self.metadata["treatments"]     
         self.update_idletasks()
-        self.display_treatments(treatments)
+        self.treatment_table = TreatmentTable(self, treatments, width=440, height=490)
+        self.treatment_table.place(x=BASE_X + 40, y=BOTTOM_BUTTONS_Y)
 
     def ratiometric_switch(self) -> None:
         current_state = self.sec_1_value_1_button["text"]
 
-        if current_state == "1":
-            self.sec_1_value_1_button.config(text="0")
+        if current_state == "True":
+            self.sec_1_value_1_button.config(text="False")
         else:
-            self.sec_1_value_1_button.config(text="1")
-
-    def display_treatments(self, treatments: dict[str, dict[str, int]]) -> None:
-        labels = []
-        for name in treatments.keys():
-            labels.append(tk.Label(self, text=name, font=FONT_S))
-            for key in treatments[name].keys():
-                labels.append(tk.Label(self, text=key, font=FONT_S))
-        
-        def x_gen():
-            while True:
-                yield 0
-                yield 100
-                yield 200
-
-        x_vals = x_gen()
-        y_increment = 0
-        for i, label in enumerate(labels):
-            if i % 3 == 0 and i != 0:
-                y_increment += 1
-            label.place(x=BASE_X + next(x_vals), y=BOTTOM_BUTTONS_Y + 40 + y_increment * PADDING_Y)
+            self.sec_1_value_1_button.config(text="True")
 
     def select_measurement_folder_and_load_metadata(self) -> None:
         path = filedialog.askdirectory(title="Select measurement folder")
@@ -353,3 +310,44 @@ class MetadataFrame(tk.Frame):
         
             with open(Path(self.metadata_path.get()) / "metadata.toml", "r") as f:
                 self.metadata = toml.load(f)
+
+    def save_values(self) -> None:
+        self.metadata["conditions"]["ratiometric_dye"] = self.sec_1_value_1_button["text"]
+        self.metadata["conditions"]["group1"] = self.sec_1_value_2_box.get("1.0", "end-1c")
+        self.metadata["conditions"]["group2"] = self.sec_1_value_3_box.get("1.0", "end-1c")
+
+
+class TreatmentTable(tk.Frame):
+    LABEL_ROW_Y = 40
+    COL_1_X = 0
+    COL_2_X = 120
+    COL_3_X = 240
+    def __init__(self, parent, treatments: dict[str, dict[str, int]], **kwargs):
+        super().__init__(parent, **kwargs)
+        self.treatments = treatments
+        self.add_row_button = tk.Button(self, text="Add row", font=FONT_M, command=self.add_row)
+        self.add_row_button.place(x=0, y=0)
+        self.name_label = tk.Label(self, text="Agonist", font=FONT_M)
+        self.name_label.place(x=self.COL_1_X, y=self.LABEL_ROW_Y)
+        self.begin_label = tk.Label(self, text="Beginning", font=FONT_M)
+        self.begin_label.place(x=self.COL_2_X, y=self.LABEL_ROW_Y)
+        self.end_label = tk.Label(self, text="End", font=FONT_M)
+        self.end_label.place(x=self.COL_3_X, y=self.LABEL_ROW_Y)
+        self.rows: list[list[tk.Entry]] = []
+        
+        for _ in range(5):
+            self.rows.append([str_entry(self), int_entry(self), int_entry(self)])
+
+        self.update_display()
+
+    def add_row(self) -> None:
+        self.rows.append([str_entry(self), int_entry(self), int_entry(self)])
+        self.update_display()
+
+    def update_display(self) -> None:
+        x_pos = cycle([self.COL_1_X, self.COL_2_X, self.COL_3_X])
+        y_pos = 70
+        for row in self.rows:
+            for entry in row:
+                entry.place(x=next(x_pos), y=y_pos)
+            y_pos += 30

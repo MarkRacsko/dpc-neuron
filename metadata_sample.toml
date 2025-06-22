@@ -1,5 +1,5 @@
 [conditions]
-ratiometric_dye = 1
+ratiometric_dye = "Yes"
 group1 = "kontrol"
 group2 = "X3"
 
@@ -10,6 +10,6 @@ group2 = "X3"
     [AITC]
     begin = 60
     end = 300
-    [K+]
+    [KCl]
     begin = 300
     end = 360
