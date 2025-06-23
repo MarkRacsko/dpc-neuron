@@ -41,5 +41,4 @@ TODO:
 - maybe add config options to change properties (size, color, ...) of the graphs
 - switch to uv
 - implement user friendly error system
-- implement input validation on the metadata
 - replace tk.Text with tk.Entry everywhere

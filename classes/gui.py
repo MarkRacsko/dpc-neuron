@@ -321,8 +321,50 @@ class MetadataFrame(tk.Frame):
         self.treatment_table.save_values()
         self.metadata["treatments"] = self.treatment_table.treatments
 
-        with open(Path(self.metadata_path.get()) / "metadata.toml", "w") as metadata:
-            toml.dump(self.metadata, metadata)
+        error_code = self.validate_treatments()
+        error_message = "Please make sure that:"
+        match error_code:
+            case 0:
+                with open(Path(self.metadata_path.get()) / "metadata.toml", "w") as metadata:
+                    toml.dump(self.metadata, metadata)
+                    messagebox.showinfo(message="Metadata saved!")
+                    return # so that the error message is not displayed when there is no error
+            case 1:
+                error_message += "\nAll begin and end values are integers." 
+            case 2:
+                error_message += "\nAll agonists have smaller begin values than end values." 
+            case 3:
+                error_message += "\nAnd all begin values are greater than or equal to the previous row's end value."
+        messagebox.showerror(message=error_message)
+
+    def validate_treatments(self) -> int:
+        treatments: dict[str, dict[str, int]] = self.metadata["treatments"]
+
+        previous_end: int = 0
+
+        for agonist in treatments:
+            begin = treatments[agonist]["begin"]
+            end = treatments[agonist]["end"]
+
+            try:
+                begin = int(begin)
+            except ValueError:
+                return 1
+
+            try:
+                end = int(end)
+            except ValueError:
+                return 1
+            
+            if begin >= end:
+                return 2
+            
+            if begin < previous_end:
+                return 3
+            
+            previous_end = end
+            
+        return 0
 
 
 class TreatmentTable(tk.Frame):
@@ -365,8 +407,8 @@ class TreatmentTable(tk.Frame):
         self.treatments = {}
         for row in self.rows:
             name = row[0].get()
-            begin = int(row[1].get())
-            end = int(row[2].get())
+            begin = row[1].get()
+            end = row[2].get()
 
             self.treatments[name] = {"begin": begin, "end": end}
 
