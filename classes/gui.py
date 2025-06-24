@@ -92,7 +92,7 @@ class MainWindow:
         # this line is here and not at the beginning so that the window won't jump around:
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
         self.config_button_press() # this is here so the program can start in the config layout
-        self.root.protocol("WM_DELETE_WINDOW", exit) # Regression but I'm willing to accept that for now.
+        self.root.protocol("WM_DELETE_WINDOW", exit)
         self.root.mainloop()
     
     def resize_window(self, *args):
@@ -322,19 +322,22 @@ class MetadataFrame(tk.Frame):
         self.metadata["treatments"] = self.treatment_table.treatments
 
         error_code = self.validate_treatments()
-        error_message = "Please make sure that:"
+        error_message = "Please make sure that:\n"
         match error_code:
             case 0:
+                for agonist in self.metadata["treatments"]:
+                    self.metadata["treatments"][agonist]["begin"] = int(self.metadata["treatments"][agonist]["begin"])
+                    self.metadata["treatments"][agonist]["end"] = int(self.metadata["treatments"][agonist]["end"])
                 with open(Path(self.metadata_path.get()) / "metadata.toml", "w") as metadata:
                     toml.dump(self.metadata, metadata)
                     messagebox.showinfo(message="Metadata saved!")
                     return # so that the error message is not displayed when there is no error
             case 1:
-                error_message += "\nAll begin and end values are integers." 
+                error_message += "All begin and end values are integers." 
             case 2:
-                error_message += "\nAll agonists have smaller begin values than end values." 
+                error_message += "All agonists have smaller begin values than end values." 
             case 3:
-                error_message += "\nAnd all begin values are greater than or equal to the previous row's end value."
+                error_message += "All begin values are greater than or equal to the previous row's end value."
         messagebox.showerror(message=error_message)
 
     def validate_treatments(self) -> int:

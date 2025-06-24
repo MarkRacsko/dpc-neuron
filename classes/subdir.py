@@ -69,7 +69,8 @@ class SubDir:
         measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
         output_columns = ["cell_ID", "condition", "cell_type"] + self.treatment_col_names
 
-        self.report = pd.DataFrame(columns=output_columns)
+        # self.report = pd.DataFrame(columns=output_columns)
+        results: list[pd.DataFrame] = []
         cell_ID: int = 0
         for file in measurement_files:
             file_result = pd.DataFrame(columns=output_columns)
@@ -102,7 +103,9 @@ class SubDir:
             cell_cols = [c.strip("1234567890") for c in cell_cols]
             file_result["cell_type"] = cell_cols
 
-            self.report = pd.concat([self.report, file_result])
+            results.append(file_result)
+
+        self.report = pd.concat(results)
 
         self.save_report()
 
@@ -197,12 +200,13 @@ class SubDir:
         matrix = np.hstack((np.ones_like(x_data), x_data))
         coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
         coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
-        cells_340 = cells_340 - (x_data * coeffs_340[1])
-        cells_380 = cells_380 - (x_data * coeffs_380[1])
+        coeffs_340, coeffs_380 = coeffs_340[1], coeffs_380[1] # we don't care about the y intercept
+        cells_340 = cells_340 - (x_data * coeffs_340)
+        cells_380 = cells_380 - (x_data * coeffs_380)
         
         # I'm working with Fura2 so the actual data of interest is the ratios between emissions at 340 and 380 nm.
         ratios = np.transpose(cells_340 / cells_380)
-        self.save_processed_data(file, x_data, ratios, cell_cols)
+        self.save_processed_data(file, x_data, ratios, cell_cols, np.vstack((coeffs_340, coeffs_380)))
 
         return cell_cols, ratios
     
@@ -219,17 +223,19 @@ class SubDir:
         # photobleaching correction
         matrix = np.hstack((np.ones_like(x_data), x_data))
         coeffs, _, _, _ = np.linalg.lstsq(matrix, cells, rcond=None)
-        cells = cells - (x_data * coeffs[1])
+        coeffs = coeffs[1] # we don't care about the y intercept
+        cells = cells - (x_data * coeffs)
 
-        self.save_processed_data(file, x_data, cells, cell_cols)
+        self.save_processed_data(file, x_data, cells, cell_cols, coeffs)
         return cell_cols, cells.transpose()
 
 
-    def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str]) -> None:
+    def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray) -> None:
         col_names = ["Time"] + col_names
         data = np.vstack((x_data.flatten(), cell_data))
         data = np.transpose(data)
-        if self.conditions["ratiometric_dye"]:
+        ratio: bool = self.conditions["ratiometric_dye"].lower() == "true"
+        if ratio:
             sheet_name: str = "Py_ratios"
         else:
             sheet_name: str = "Processed"
@@ -241,14 +247,33 @@ class SubDir:
         ws = wb.create_sheet(sheet_name)
         
         ws.append(col_names)
-        for row in data:
-            ws.append(list(row))
+        for row in data.tolist(): # type: ignore
+            ws.append(row)
 
+        sheet_name = "Coeffs"
+        if sheet_name in wb.sheetnames: # this is only going to be true when --repeat is used
+            wb.remove(wb[sheet_name])
+        
+        ws = wb.create_sheet(sheet_name)
+
+        coeffs = coeffs.tolist() # type: ignore
+        if ratio:
+            col_names[0] = "Wavelength"
+            first_col = ["340", "380"]
+            ws.append(col_names)
+            for coeff_id, coeff_values in zip(first_col, coeffs):
+                ws.append([coeff_id] + coeff_values)
+        else:
+            ws.append(col_names[1:])
+            ws.append(coeffs)
+        # If we're not using a ratiometric dye, we only have one set of coefficients, but if we are using Fura, then we
+        # have two, and we should save which is which.
         wb.save(file)
 
     def save_report(self) -> None:
         assert self.report is not None # report is guaranteed not to be None by the time this method is called
         with pd.ExcelWriter(self.report_path) as writer:
             self.report.to_excel(writer, sheet_name="Cells", index=False)
-            stats = self.report[["cell_type"] + self.treatment_col_names].value_counts()
+            cols = [c for c in self.treatment_col_names if "_reaction" in c]
+            stats = self.report[["cell_type"] + cols].value_counts()
             stats.to_excel(writer, sheet_name="Summary")

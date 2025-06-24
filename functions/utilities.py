@@ -91,7 +91,7 @@ def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        thresholds = ratios[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs.flatten() # hotfix, need to think more
+        thresholds = ratios[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs.flatten()
         maximums = ratios[:,time_window].max(axis=1, keepdims=False)
         amplitudes = maximums - baseline_means.flatten()
         # using amplitudes to determine reactions is wrong because of the baseline substraction

@@ -34,11 +34,9 @@ These have 2 section:
 - treatments: Consists of subsections, one for each agonist you've applied during the measurement. Subsections need to be named "treatments.something", without the quotation marks. The first subsection is expected to be called baseline, others can be named whatever you want (so long as you follow the treatments. naming convention). In the sample file the subsections are indented, but they don't have to be. If you add more subsections, each must have its name in square brackets and contain two keys, one called begin and one called end. The end value should be equal to the next agonist's begin value, or the total number of frames in the measurement for the final agonist used (which in a neuron context is usually potassium chloride, which should be called K+.) The values for these two keys describe when a given agonist treatment began and ended, respectively. They should be integers.
 
 TODO:
-- investigate pd.concat FutureWarning about concating empty stuff
-- reevaluate my hotfix to the shape issues, think through if this is the correct solution, apply solution to all versions of the function
-- ~~implement saving the ratio values~~ and the coefficients
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
 - maybe add config options to change properties (size, color, ...) of the graphs
 - switch to uv
 - implement user friendly error system
 - replace tk.Text with tk.Entry everywhere
+- implement a feedback popup in the GUI to tell the user the app is finished whatever it was doing
