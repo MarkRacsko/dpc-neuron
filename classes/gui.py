@@ -4,10 +4,9 @@ from tkinter import messagebox
 from tkinter import filedialog
 from typing import Any
 from pathlib import Path
-from .analyzer import DataAnalyzer
 from itertools import cycle
-from functions.utilities import validate_treatments
-from functions.gui_utilities import str_entry, int_entry
+from functions import validate_treatments, str_entry, int_entry
+from .analyzer import DataAnalyzer
 
 FONT_L = ("Arial", 18)
 FONT_M = ("Arial", 16)
@@ -131,13 +130,17 @@ class MainWindow:
         
         data_analyzer = DataAnalyzer(self.config, bool(self.check_r_state.get()))
         for subdir_path in data_path.iterdir():
-            if subdir_path.is_dir():        
-                data_analyzer.create_subdir_instance(subdir_path)
+            if subdir_path.is_dir():
+                error_message_1 = data_analyzer.create_subdir_instance(subdir_path)
+                if error_message_1:
+                    messagebox.showerror(error_message_1)
 
         proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
         
         if proc:
-            data_analyzer.process_data()
+            error_message_2 = data_analyzer.process_data()
+            if error_message_2:
+                messagebox.showerror(error_message_2)
         if tab:
             data_analyzer.tabulate_data()
         if graph:
@@ -344,11 +347,11 @@ class MetadataFrame(tk.Frame):
                 toml.dump(self.metadata, metadata)
                 messagebox.showinfo(message="Metadata saved!")
                 return # so that the error message is not displayed when there is no error
-        elif not passed_tests[0]:
+        if not passed_tests[0]:
             error_message += "\nAll begin and end values are integers."
-        elif not passed_tests[1]:
+        if not passed_tests[1]:
             error_message += "\nAll agonists have smaller begin values than end values."
-        elif not passed_tests[2]:
+        if not passed_tests[2]:
             error_message += "\nAll begin values are greater than or equal to the previous row's end value."
                 
         messagebox.showerror(message=error_message)

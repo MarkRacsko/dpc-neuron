@@ -34,7 +34,7 @@ These have 2 section:
 - treatments: Consists of subsections, one for each agonist you've applied during the measurement. Subsections need to be named "treatments.something", without the quotation marks. The first subsection is expected to be called baseline, others can be named whatever you want (so long as you follow the treatments. naming convention). In the sample file the subsections are indented, but they don't have to be. If you add more subsections, each must have its name in square brackets and contain two keys, one called begin and one called end. The end value should be equal to the next agonist's begin value, or the total number of frames in the measurement for the final agonist used (which in a neuron context is usually potassium chloride, which should be called K+.) The values for these two keys describe when a given agonist treatment began and ended, respectively. They should be integers.
 
 TODO:
-- implement user friendly error system
+- cover more situations with error system and test every error
 - switch to uv
 - update documentation and provide install instructions
 - replace tk.Text with tk.Entry everywhere

@@ -8,6 +8,10 @@ def main():
 
     with open("./config.toml", "r") as f:
         config = toml.load(f)
+        config["input"]["interface"] = "CLI"
+        # This is done because errors need to be printed if we are running the CLI version but raised if
+        # we're in the GUI. We hand this config dict over to the DataAnalyzer anyway, so might as well store
+        # this information in it.
     default_target = config["input"]["target_folder"]
     
     target_help = "Path to the folder you want to process. Individual measurement results must be in subfolders of this folder, files in the same subfolder will be interpreted as belonging to the same experiment/day."

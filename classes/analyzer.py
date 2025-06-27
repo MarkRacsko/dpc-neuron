@@ -20,24 +20,41 @@ class DataAnalyzer:
         self.repeat = repeat
         self.experiments: dict[ExperimentalCondition, list[ExperimentalData]]
 
-    def create_subdir_instance(self, subdir_path: Path):
+    def create_subdir_instance(self, subdir_path: Path) -> str | None:
         """Creates a new SubDir object for the given path and appends it to a (private) list.
 
         Args:
             subdir_path (Path): Path to this subdirectory in the target directory we are processing.
             repeat (bool): The --repeat command line flag as a bool.
         """
-        instance = SubDir(subdir_path, self.config["output"]["report_name"])
-        instance.preprocessing(self.repeat)
-        self._subdirs.append(instance)
+        mode: str = self.config["input"]["interface"]
+        try:
+            instance = SubDir(subdir_path, self.config["output"]["report_name"])
+            instance.preprocessing(self.repeat)
+            self._subdirs.append(instance)
+        except Exception as e:
+            if mode == "CLI":
+                print(e)
+            else:
+                return str(e)
 
-    def process_data(self) -> None:
+    def process_data(self) -> str | None:
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
+        mode: str = self.config["input"]["interface"]
+        message: str = ""
         for subdir in self._subdirs:
-            subdir.make_report(method=self.config["input"]["method"],
-                               sd_multiplier=self.config["input"]["SD_multiplier"],
-                               smoothing_window=self.config["input"]["smoothing_range"])
+            try:
+                subdir.make_report(method=self.config["input"]["method"],
+                                sd_multiplier=self.config["input"]["SD_multiplier"],
+                                smoothing_window=self.config["input"]["smoothing_range"])
+            except Exception as e:
+                if mode == "CLI":
+                    print(e)
+                else:
+                    message += str(e)
+        if mode == "GUI":
+            return message
 
     def tabulate_data(self):
         sum_conf = self.config["output"]

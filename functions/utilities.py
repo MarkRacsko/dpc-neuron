@@ -2,24 +2,8 @@ from __future__ import annotations
 import math
 import pandas as pd
 import numpy as np
+from typing import Any
 
-def create_event_slices(starts: pd.Series, stops: pd.Series) -> list[slice[int]]:
-    """Translates the list of timepoints when events happened into a list of slice objects that represent this
-    information as time windows. The output is intended to be used to access the relevant parts of the calcium trace data.
-
-    Args:
-        event_list (list[int]): The events as returned by parse_events().
-
-    Returns:
-        list[slice]: A list of slices of the form [agonist_start_time:agonist_end_time] where agonist refers to the
-        compound added in this particular time window to the cells being measured.
-    """
-    slices: list[slice[int]] = []
-
-    for start, stop in zip(starts, stops):
-        slices.append(slice(start, stop))
-
-    return slices
 
 def normalize(array: np.ndarray, baseline) -> np.ndarray:
     return array / array[0:baseline].mean()
@@ -144,3 +128,38 @@ def validate_treatments(treatments: dict[str, dict[str, int]]) -> list[bool]:
         previous_end = end
 
     return passed_tests
+
+def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
+    errors: str = f"Metadata for folder {folder} has the following errors:"
+    starting_len: int = len(errors)
+    try:
+        conditions = metadata["conditions"]
+        try:
+            if conditions["ratiometric_dye"].lower() not in {"true", "false"}:
+                errors += '\nratiometric_dye value incorrect. Supported values are "true" and "false".'
+        except KeyError:
+            errors += "\nratiometric_dye key missing or renamed."
+        if "group1" not in conditions or "group2" not in conditions:
+            errors += '\nGroup key names changed or missing. Correct values are "group1" and "group2".'
+    except KeyError:
+        errors += "\nConditions section missing or incorrectly named."
+    try:
+        treatments = metadata["treatments"]
+    except KeyError:
+        raise KeyError("\nTreatments section missing or incorrectly named.")
+
+    treatment_errors = validate_treatments(treatments)
+    if not treatment_errors[0]:
+        errors += "\nAll begin and end values must be integers."
+    if not treatment_errors[1]:
+        errors += "\nAll agonists must have smaller begin values than end values."
+    if not treatment_errors[2]:
+        errors += "\nAll begin values must be greater than or equal to the previous row's end value."
+
+    if len(errors) > starting_len:
+        return errors
+    else:
+        return ""
+    
+
+    

@@ -3,9 +3,10 @@ import pandas as pd
 import openpyxl
 import toml
 from pathlib import Path
-from functions import create_event_slices, normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
+from functions import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold, validate_metadata
 from matplotlib.figure import Figure
 from typing import Optional
+from .errors import MetadataError, ProcessingError
 
 class SubDir:
     def __init__(self, path: Path, report_name: str) -> None:
@@ -23,34 +24,18 @@ class SubDir:
         if self.report_path.exists() and not repeat:
             self.has_report = True
 
-    def parse_events(self) -> None:
-        """Reads in the event file that describes what happened during the measurement in question.
-
-        Args:
-            file (Path): The pathlib.Path object representing the event file. Must be csv.
-
-        Returns:
-            dict[str, slice[int]: This dictionary maps the names of agonists to the time windows where they were applied.
-            list[str]: The list of agonist related column names for the report DataFrame.
-        """
-        file = self.path / "events.csv"
-        events_df = pd.read_csv(file, header=0)
-
-        treatments, start_times, stop_times = events_df["treatment"], events_df["start"], events_df["stop"]
-        event_slices = create_event_slices(start_times, stop_times)
-        self.treatment_windows: dict[str, slice[int]] = {k: v for k, v in zip(treatments, event_slices)}
-        
-        for agonist in treatments:
-            if agonist == "baseline":
-                continue
-            self.treatment_col_names.append(agonist + "_reaction")
-            self.treatment_col_names.append(agonist + "_amp")
 
     def parse_metadata(self) -> None:
-        file = self.path / "metadata.toml"
-        with open(file, "r") as f:
-            metadata = toml.load(f)
+        try:
+            file = self.path / "metadata.toml"
+            with open(file, "r") as f:
+                metadata = toml.load(f)
+        except FileNotFoundError:
+            raise MetadataError(f"Metadata file missing from {self.path}.")
 
+        errors = validate_metadata(self.path.name, metadata)
+        if errors:
+            raise MetadataError(errors)
         self.conditions = metadata["conditions"]
 
         for agonist_name, agonist_dict in metadata["treatments"].items():
@@ -72,17 +57,30 @@ class SubDir:
         # self.report = pd.DataFrame(columns=output_columns)
         results: list[pd.DataFrame] = []
         cell_ID: int = 0
+        bad_groups_files: list[Path] = []
+        bad_sheet_files: list[Path] = []
         for file in measurement_files:
             file_result = pd.DataFrame(columns=output_columns)
-            if self.conditions["ratiometric_dye"].lower() == "true":
-                cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window)
-            else:
-                cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window)
+            try:
+                if self.conditions["ratiometric_dye"].lower() == "true":
+                    cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window)
+                else:
+                    cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window)
+            except ValueError:
+                bad_sheet_files.append(file)
+                continue
             # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
             # be "neuron + DPC {number}.xlsx"
             group1: str = self.conditions["group1"]
             group2: str = self.conditions["group2"]
-            condition = group1 if group1 in file.name else group2
+            
+            if group1 in file.name:
+                condition = group1
+            elif group2 in file.name:
+                condition = group2
+            else:
+                bad_groups_files.append(file)
+                continue
             
             # determine if cells react to each of the agonists, and how big the response amplitudes are
             # no default case because we already have a guard clause to make sure these 3 are the only options, which we
@@ -108,6 +106,20 @@ class SubDir:
         self.report = pd.concat(results)
 
         self.save_report()
+
+        message = ""
+        if bad_groups_files:
+            message += "The following files are named incorrectly:"
+            for f in bad_groups_files:
+                message += f"\n{str(f)}"
+            message += "\nPlease consult the appropriate metadata file and rename them."
+        if bad_sheet_files:
+            message += "\n\nThe following files have incorrectly named sheets:"
+            for f in bad_sheet_files:
+                message += f"\n{str(f)}"
+            message += "\nPlease consult the README and rename the sheet(s) appropriately."
+        if message:
+            raise ProcessingError(message)
 
     def make_graphs(self):
         measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
