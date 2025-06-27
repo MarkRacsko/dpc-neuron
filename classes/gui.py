@@ -6,6 +6,7 @@ from typing import Any
 from pathlib import Path
 from .analyzer import DataAnalyzer
 from itertools import cycle
+from functions.utilities import validate_treatments
 from functions.gui_utilities import str_entry, int_entry
 
 FONT_L = ("Arial", 18)
@@ -333,53 +334,24 @@ class MetadataFrame(tk.Frame):
         self.treatment_table.save_values()
         self.metadata["treatments"] = self.treatment_table.treatments
 
-        error_code = self.validate_treatments()
+        passed_tests: list[bool] = validate_treatments(self.metadata["treatments"])
         error_message = "Please make sure that:"
-        match error_code:
-            case 0:
-                for agonist in self.metadata["treatments"]:
-                    self.metadata["treatments"][agonist]["begin"] = int(self.metadata["treatments"][agonist]["begin"])
-                    self.metadata["treatments"][agonist]["end"] = int(self.metadata["treatments"][agonist]["end"])
-                with open(Path(self.metadata_path.get()) / "metadata.toml", "w") as metadata:
-                    toml.dump(self.metadata, metadata)
-                    messagebox.showinfo(message="Metadata saved!")
-                    return # so that the error message is not displayed when there is no error
-            case 1:
-                error_message += "\nAll begin and end values are integers." 
-            case 2:
-                error_message += "\nAll agonists have smaller begin values than end values." 
-            case 3:
-                error_message += "\nAll begin values are greater than or equal to the previous row's end value."
+        if all(passed_tests):
+            for agonist in self.metadata["treatments"]:
+                self.metadata["treatments"][agonist]["begin"] = int(self.metadata["treatments"][agonist]["begin"])
+                self.metadata["treatments"][agonist]["end"] = int(self.metadata["treatments"][agonist]["end"])
+            with open(Path(self.metadata_path.get()) / "metadata.toml", "w") as metadata:
+                toml.dump(self.metadata, metadata)
+                messagebox.showinfo(message="Metadata saved!")
+                return # so that the error message is not displayed when there is no error
+        elif not passed_tests[0]:
+            error_message += "\nAll begin and end values are integers."
+        elif not passed_tests[1]:
+            error_message += "\nAll agonists have smaller begin values than end values."
+        elif not passed_tests[2]:
+            error_message += "\nAll begin values are greater than or equal to the previous row's end value."
+                
         messagebox.showerror(message=error_message)
-
-    def validate_treatments(self) -> int:
-        treatments: dict[str, dict[str, int]] = self.metadata["treatments"]
-
-        previous_end: int = 0
-
-        for agonist in treatments:
-            begin = treatments[agonist]["begin"]
-            end = treatments[agonist]["end"]
-
-            try:
-                begin = int(begin)
-            except ValueError:
-                return 1
-
-            try:
-                end = int(end)
-            except ValueError:
-                return 1
-            
-            if begin >= end:
-                return 2
-            
-            if begin < previous_end:
-                return 3
-            
-            previous_end = end
-            
-        return 0
 
 
 class TreatmentTable(tk.Frame):

@@ -115,3 +115,32 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         reactions = np.where(maximum_derivs > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions.flatten()
         file_result[agonist + "_amp"] = amplitudes.flatten()
+
+
+def validate_treatments(treatments: dict[str, dict[str, int]]) -> list[bool]:
+
+    previous_end: int = 0
+    passed_tests: list[bool] = [True, True, True]
+    for agonist in treatments:
+        begin = treatments[agonist]["begin"]
+        end = treatments[agonist]["end"]
+
+        try:
+            begin = int(begin)
+        except ValueError:
+            passed_tests[0] = False
+
+        try:
+            end = int(end)
+        except ValueError:
+            passed_tests[0] = False
+
+        if begin >= end:
+            passed_tests[1] = False
+
+        if begin < previous_end:
+            passed_tests[2] = False
+
+        previous_end = end
+
+    return passed_tests
