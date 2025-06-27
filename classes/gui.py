@@ -31,7 +31,16 @@ DISPLAY_MODES: dict[str, str] = {
     "metadata": "460x700"
 }
 
-Treatment = namedtuple("Treatment", ["name", "begin", "end"])
+MESSAGES: dict[tuple[int, int, int], str] = {
+    (0, 0, 0): "Please select at least one action to perform.",
+    (1, 0, 0): "Finished processing data.",
+    (0, 1, 0): "Finished tabulating results.",
+    (0, 0, 1): "Finished making graphs.",
+    (1, 1, 0): "Finished processing data and tabulating results.",
+    (1, 0, 1): "Finished processing data and making graphs.",
+    (0, 1, 1): "Finished tabulating results and making graphs.",
+    (1, 1, 1): "Finished processing data, tabulating results, and making graphs."
+}
 
 class MainWindow:
     def __init__(self, config: dict[str, dict[str, Any]]) -> None:
@@ -124,13 +133,17 @@ class MainWindow:
         for subdir_path in data_path.iterdir():
             if subdir_path.is_dir():        
                 data_analyzer.create_subdir_instance(subdir_path)
-            
-        if self.check_p_state.get():
+
+        proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
+        
+        if proc:
             data_analyzer.process_data()
-        if self.check_t_state.get():
+        if tab:
             data_analyzer.tabulate_data()
-        if self.check_g_state.get():
+        if graph:
             data_analyzer.graph_data()
+
+        messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])
 
     def config_button_press(self) -> None:
         """
@@ -322,7 +335,7 @@ class MetadataFrame(tk.Frame):
         self.metadata["treatments"] = self.treatment_table.treatments
 
         error_code = self.validate_treatments()
-        error_message = "Please make sure that:\n"
+        error_message = "Please make sure that:"
         match error_code:
             case 0:
                 for agonist in self.metadata["treatments"]:
@@ -333,11 +346,11 @@ class MetadataFrame(tk.Frame):
                     messagebox.showinfo(message="Metadata saved!")
                     return # so that the error message is not displayed when there is no error
             case 1:
-                error_message += "All begin and end values are integers." 
+                error_message += "\nAll begin and end values are integers." 
             case 2:
-                error_message += "All agonists have smaller begin values than end values." 
+                error_message += "\nAll agonists have smaller begin values than end values." 
             case 3:
-                error_message += "All begin values are greater than or equal to the previous row's end value."
+                error_message += "\nAll begin values are greater than or equal to the previous row's end value."
         messagebox.showerror(message=error_message)
 
     def validate_treatments(self) -> int:
