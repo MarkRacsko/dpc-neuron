@@ -5,7 +5,6 @@ from tkinter import filedialog
 from typing import Any
 from pathlib import Path
 from .analyzer import DataAnalyzer
-from collections import namedtuple
 from itertools import cycle
 from functions.gui_utilities import str_entry, int_entry
 
