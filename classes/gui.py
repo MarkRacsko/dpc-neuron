@@ -120,8 +120,8 @@ class MainWindow:
         if method not in ["baseline", "previous", "derivative"]:
             # this is here and not where the check is actually relevant in order to avoid unnecessary IO and processing
             # operations if the user made a mistake and the program would crash anyway
-            print("The only reaction testing methods implemented are \"baseline\", \"previous\", "
-            "and \"derivative\". See README.md")
+            messagebox.showerror(message="Implemented reaction testing methods are:\n\"baseline\",\n\"previous\", "
+            "\nand \"derivative\".\n\nSee README.md")
             exit()
         
         # this is so the analyzer object will have access to the target path for saving the tabulated summary
@@ -131,16 +131,16 @@ class MainWindow:
         data_analyzer = DataAnalyzer(self.config, bool(self.check_r_state.get()))
         for subdir_path in data_path.iterdir():
             if subdir_path.is_dir():
-                error_message_1 = data_analyzer.create_subdir_instance(subdir_path)
-                if error_message_1:
-                    messagebox.showerror(error_message_1)
+                error_message = data_analyzer.create_subdir_instance(subdir_path)
+                if error_message:
+                    messagebox.showerror(error_message)
 
         proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
         
         if proc:
-            error_message_2 = data_analyzer.process_data()
-            if error_message_2:
-                messagebox.showerror(error_message_2)
+            error_list = data_analyzer.process_data()
+            for error in error_list:
+                messagebox.showerror(error) # if the list is empty, nothing will happen
         if tab:
             data_analyzer.tabulate_data()
         if graph:

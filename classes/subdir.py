@@ -6,7 +6,6 @@ from pathlib import Path
 from functions import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold, validate_metadata
 from matplotlib.figure import Figure
 from typing import Optional
-from .errors import MetadataError, ProcessingError
 
 class SubDir:
     def __init__(self, path: Path, report_name: str) -> None:
@@ -25,17 +24,17 @@ class SubDir:
             self.has_report = True
 
 
-    def parse_metadata(self) -> None:
+    def parse_metadata(self) -> str | None:
         try:
             file = self.path / "metadata.toml"
             with open(file, "r") as f:
                 metadata = toml.load(f)
         except FileNotFoundError:
-            raise MetadataError(f"Metadata file missing from {self.path}.")
+            return f"Metadata file missing from {self.path}."
 
         errors = validate_metadata(self.path.name, metadata)
         if errors:
-            raise MetadataError(errors)
+            return errors
         self.conditions = metadata["conditions"]
 
         for agonist_name, agonist_dict in metadata["treatments"].items():
@@ -45,7 +44,7 @@ class SubDir:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int) -> None:
+    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int) -> str | None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
         if self.has_report:
@@ -119,7 +118,7 @@ class SubDir:
                 message += f"\n{str(f)}"
             message += "\nPlease consult the README and rename the sheet(s) appropriately."
         if message:
-            raise ProcessingError(message)
+            return message
 
     def make_graphs(self):
         measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]

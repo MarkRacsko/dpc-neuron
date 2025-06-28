@@ -75,6 +75,19 @@
     - add, edit, remove buttons
     - the editor is a class with its mechanism implemented using methods and the individual treatments are stored in Treatment objects
     - Treatment is a dataclass with name, begin, end attrs
+
+- Potential sources of errors:
+    - target folder does not exist or does not adhere to prescribed structure
+    - SD_multiplier not a number
+    - smoothing_range not odd or too large
+    - sheets incorrectly named in measurement files
+    - keys missing from metadata or config
+    - in metadata:
+        - ratiometric_dye not in ["true", "false"]
+        - group names are wrong
+        - treatment begin or end values not integers
+        - a begin value is larger than or equal to its corresponding end value
+        - a begin value is smaller than the preceding end value
     
 # Planned structure of the project
 What the program should be doing:

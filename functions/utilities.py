@@ -145,16 +145,16 @@ def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
         errors += "\nConditions section missing or incorrectly named."
     try:
         treatments = metadata["treatments"]
+        treatment_errors = validate_treatments(treatments)
+        if not treatment_errors[0]:
+            errors += "\nAll begin and end values must be integers."
+        if not treatment_errors[1]:
+            errors += "\nAll agonists must have smaller begin values than end values."
+        if not treatment_errors[2]:
+            errors += "\nAll begin values must be greater than or equal to the previous row's end value."
     except KeyError:
-        raise KeyError("\nTreatments section missing or incorrectly named.")
+        errors += "\nTreatments section missing or incorrectly named."
 
-    treatment_errors = validate_treatments(treatments)
-    if not treatment_errors[0]:
-        errors += "\nAll begin and end values must be integers."
-    if not treatment_errors[1]:
-        errors += "\nAll agonists must have smaller begin values than end values."
-    if not treatment_errors[2]:
-        errors += "\nAll begin values must be greater than or equal to the previous row's end value."
 
     if len(errors) > starting_len:
         return errors

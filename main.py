@@ -5,15 +5,14 @@ from classes import DataAnalyzer
 
 
 def main():
-
-    with open("./config.toml", "r") as f:
-        config = toml.load(f)
-        config["input"]["interface"] = "CLI"
-        # This is done because errors need to be printed if we are running the CLI version but raised if
-        # we're in the GUI. We hand this config dict over to the DataAnalyzer anyway, so might as well store
-        # this information in it.
-    default_target = config["input"]["target_folder"]
+    try:
+        with open("./config.toml", "r") as f:
+            config = toml.load(f)
+    except FileNotFoundError:
+        print("Config file needed. Should not have deleted or renamed it.")
+        exit()
     
+    default_target = config["input"]["target_folder"]
     target_help = "Path to the folder you want to process. Individual measurement results must be in subfolders of this folder, files in the same subfolder will be interpreted as belonging to the same experiment/day."
     r_help = "If set, process (and/or tabulate) every measurment found in the target folder. Defaults to False, in which case measurements that already have a report associated with them are ignored."
     group_help = "The following are mutually exclusive flags that govern the program's behaviour. One must be chosen."
@@ -63,10 +62,14 @@ def main():
     data_analyzer = DataAnalyzer(config, args.repeat)
     for subdir_path in data_path.iterdir():
         if subdir_path.is_dir():        
-            data_analyzer.create_subdir_instance(subdir_path)
+            error_message = data_analyzer.create_subdir_instance(subdir_path)
+            if error_message:
+                print(error_message)
         
     if processing:
-        data_analyzer.process_data()
+        error_list = data_analyzer.process_data()
+        for error in error_list:
+            print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed
     if tabulating:
         data_analyzer.tabulate_data()
     if args.graph:

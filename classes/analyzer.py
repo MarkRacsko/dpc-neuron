@@ -27,34 +27,25 @@ class DataAnalyzer:
             subdir_path (Path): Path to this subdirectory in the target directory we are processing.
             repeat (bool): The --repeat command line flag as a bool.
         """
-        mode: str = self.config["input"]["interface"]
-        try:
-            instance = SubDir(subdir_path, self.config["output"]["report_name"])
-            instance.preprocessing(self.repeat)
-            self._subdirs.append(instance)
-        except Exception as e:
-            if mode == "CLI":
-                print(e)
-            else:
-                return str(e)
+        instance = SubDir(subdir_path, self.config["output"]["report_name"])
+        error = instance.preprocessing(self.repeat)
+        self._subdirs.append(instance)
+        
+        if error:
+            return error
 
-    def process_data(self) -> str | None:
+    def process_data(self) -> list[str]:
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
-        mode: str = self.config["input"]["interface"]
-        message: str = ""
+        errors: list[str] = []
         for subdir in self._subdirs:
-            try:
-                subdir.make_report(method=self.config["input"]["method"],
-                                sd_multiplier=self.config["input"]["SD_multiplier"],
-                                smoothing_window=self.config["input"]["smoothing_range"])
-            except Exception as e:
-                if mode == "CLI":
-                    print(e)
-                else:
-                    message += str(e)
-        if mode == "GUI":
-            return message
+            error = subdir.make_report(method=self.config["input"]["method"],
+                            sd_multiplier=self.config["input"]["SD_multiplier"],
+                            smoothing_window=self.config["input"]["smoothing_range"])
+            if error:
+                errors.append(error)
+        return errors
+
 
     def tabulate_data(self):
         sum_conf = self.config["output"]
