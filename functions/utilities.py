@@ -3,6 +3,7 @@ import math
 import pandas as pd
 import numpy as np
 from typing import Any
+from numbers import Rational
 
 
 def normalize(array: np.ndarray, baseline) -> np.ndarray:
@@ -100,6 +101,30 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_reaction"] = reactions.flatten()
         file_result[agonist + "_amp"] = amplitudes.flatten()
 
+
+def validate_config(config: dict[str, dict[str, Any]]) -> str | None:
+    message: str = "Errors encountered:"
+    starting_len = len(message)
+    data_path = config["input"]["target_folder"]
+    if not data_path.exists():
+        message += "Target not found."
+    elif not data_path.is_dir():
+        message += "Target isn't a folder."
+
+    method = config["input"]["method"]
+    if method not in ["baseline", "previous", "derivative"]:
+        message += "The only reaction testing methods implemented are \"baseline\", \"previous\", "
+        "and \"derivative\"."
+    
+    if not isinstance(config["input"]["SD_multiplier"], Rational):
+        message += "SD_multiplier must be an integer or floating point number."
+    
+    if not isinstance(config["input"]["smoothing_range"], int):
+        message += "smoothing_range must be an integer number."
+    
+    if len(message) > starting_len:
+        message += "\nExiting."
+        return message
 
 def validate_treatments(treatments: dict[str, dict[str, int]]) -> list[bool]:
 

@@ -2,6 +2,7 @@ import argparse
 import toml
 from pathlib import Path
 from classes import DataAnalyzer
+from functions import validate_config
 
 
 def main():
@@ -39,25 +40,15 @@ def main():
     if args.tabulate or args.pt:
         tabulating = True
 
-    data_path = Path(args.TARGET)
-    if not data_path.exists():
-        print("Target not found. Exiting.")
-        exit()
-    if not data_path.is_dir():
-        print("Target isn't a folder. Exiting.")
-        exit()
-
-    method = config["input"]["method"]
-    if method not in ["baseline", "previous", "derivative"]:
-        # this is here and not where the check is actually relevant in order to avoid unnecessary IO and processing
-        # operations if the user made a mistake and the program would crash anyway
-        print("The only reaction testing methods implemented are \"baseline\", \"previous\", "
-        "and \"derivative\". See README.md")
-        exit()
-    
+    data_path = Path(args.TARGET)    
     # this is so the analyzer object will have access to the target path for saving the tabulated summary
     # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
     config["input"]["target_folder"] = data_path
+
+    errors = validate_config(config)
+    if errors:
+        print(errors)
+        exit()
     
     data_analyzer = DataAnalyzer(config, args.repeat)
     for subdir_path in data_path.iterdir():
