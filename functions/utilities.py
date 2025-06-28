@@ -102,29 +102,56 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_amp"] = amplitudes.flatten()
 
 
-def validate_config(config: dict[str, dict[str, Any]]) -> str | None:
+def validate_config(config: dict[str, dict[str, Any]]) -> str:
     message: str = "Errors encountered:"
     starting_len = len(message)
-    data_path = config["input"]["target_folder"]
-    if not data_path.exists():
-        message += "Target not found."
-    elif not data_path.is_dir():
-        message += "Target isn't a folder."
+    try:
+        data_path = config["input"]["target_folder"]
+        if not data_path.exists():
+            message += "\n- target folder not found."
+        elif not data_path.is_dir():
+            message += "\n- target isn't a folder."
+    except KeyError:
+        message += "\n- target_folder key missing from input section"
 
-    method = config["input"]["method"]
-    if method not in ["baseline", "previous", "derivative"]:
-        message += "The only reaction testing methods implemented are \"baseline\", \"previous\", "
-        "and \"derivative\"."
+    try:
+        method = config["input"]["method"]
+        if method not in ["baseline", "previous", "derivative"]:
+            message += "\n- method value incorrect; only \"baseline\", \"previous\", and \"derivative\" are accepted"
+    except KeyError:
+        message += "\n- method key missing from input section"
     
-    if not isinstance(config["input"]["SD_multiplier"], Rational):
-        message += "SD_multiplier must be an integer or floating point number."
+    try:
+        if not isinstance(config["input"]["SD_multiplier"], Rational):
+            message += "\n- SD_multiplier value must be an integer or floating point number"
+    except KeyError:
+        message += "\n- SD_multiplier key missing from input section"
     
-    if not isinstance(config["input"]["smoothing_range"], int):
-        message += "smoothing_range must be an integer number."
+    try:
+        if not isinstance(config["input"]["smoothing_range"], int):
+            message += "\n- smoothing_range value must be an integer number."
+        elif config["input"]["smoothing_range"] %2 == 0:
+            message += "\n- smoothing_range value must not be an odd number"
+    except KeyError:
+        message += "\n- smoothing_range key missing from input section"
+
+    try:
+        if not isinstance(config["output"]["report_name"], str):
+            message += "\n- report_name value must be a string"
+    except KeyError:
+        message += "\n- report_name key missing from output section"
+
+    try:
+        if not isinstance(config["output"]["summary_name"], str):
+            message += "\n- summary_name value must be a string"
+    except KeyError:
+        message += "\n- summary_name key missing from output section"
     
     if len(message) > starting_len:
-        message += "\nExiting."
+        message += ".\nExiting."
         return message
+    else:
+        return ""
 
 def validate_treatments(treatments: dict[str, dict[str, int]]) -> list[bool]:
 
@@ -136,19 +163,14 @@ def validate_treatments(treatments: dict[str, dict[str, int]]) -> list[bool]:
 
         try:
             begin = int(begin)
-        except ValueError:
-            passed_tests[0] = False
-
-        try:
             end = int(end)
+            if begin >= end:
+                passed_tests[1] = False
+
+            if begin < previous_end:
+                passed_tests[2] = False
         except ValueError:
             passed_tests[0] = False
-
-        if begin >= end:
-            passed_tests[1] = False
-
-        if begin < previous_end:
-            passed_tests[2] = False
 
         previous_end = end
 
