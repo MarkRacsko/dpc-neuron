@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Any
 from numbers import Rational
+from pathlib import Path
 
 
 def normalize(array: np.ndarray, baseline) -> np.ndarray:
@@ -106,7 +107,7 @@ def validate_config(config: dict[str, dict[str, Any]]) -> str:
     message: str = "Errors encountered:"
     starting_len = len(message)
     try:
-        data_path = config["input"]["target_folder"]
+        data_path = Path(config["input"]["target_folder"])
         if not data_path.exists():
             message += "\n- target folder not found."
         elif not data_path.is_dir():

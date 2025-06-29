@@ -5,10 +5,17 @@ This project is meant to help me analyze and visualize results from my dental pu
 # Usage
 The program takes a folder as its input and expects data from individual measurements to be grouped into subfolders within this folder. (All data from one day of experiments goes in one subfolder for me, but this is not mandatory, only the structure is.) Experimental conditions are described by a metadata.toml file that must be present in every subfolder to be processed. Processing configurations are set by a config.toml file, located in the same folder as this README and the Python files. The expected contents of these files are described below.
 
-At the moment, the program only has a command line interface, but I'm going to make a graphical one soon.
+## The graphical interface
+The program exists in two versions, a command line only one (main.py) and one with a graphical interface (main-gui.py). The graphical version performs the same analysis tasks and has checkboxes that correspond to the CLI version's command line flags, namely:
+- Process: to do data processing and create reports
+- Tabulate: to summarize all existing reports
+- Make graphs: to draw line plots for each cell
+- Repeat: normally the program ignores folders that already have a report file in them, this option tells it to process everything anyway.
+
+The GUI version also comes with an editor for the program's config file and the experiment metadata files. The use of these should be fairly straightforward, the only catch is that the metadata editor does NOT preserve unsaved changes to its fields if you switch over to the config editor. (The original contents of the loaded metadata file is preserved though.) There is no "save as" button, so you will have to copy an existing metadata file (or the sample) to new folders. If you copy the sample, make sure to rename it to "metadata.toml" as both the editor and the analyzer expect this exact file name. Of course this toml file can also be edited manually, as detailed below.
 
 ## How to use the .toml files
-Tom's Obvious, Minimal Language (toml) is a simple file format for configuration files, editable by any text editor such as Windows Notepad. A toml file is (can be) divided into sections, each of which can have their own subsections. Subsections may be indented for the sake of clarity, but this is not required. Sections and subsections are delineated by their names in square brackets, like this: [section_name]. The actual configuration data is stored as key-value pairs, like this:
+Tom's Obvious, Minimal Language (toml) is a simple file format for configuration files, editable by any text editor such as Windows Notepad. A toml file is (can be) divided into sections, each of which can have their own subsections. Subsections may be indented for the sake of clarity, but this is not required. Sections are delineated by their name in square brackets, like this: [section_name], while subsections are marked by [section_name.subsection_name]. The actual configuration data is stored as key-value pairs, like this:
 
 key_1 = "value_1"  
 key_2 = 2
@@ -16,7 +23,7 @@ key_2 = 2
 When editing one of these files, only change the values, not the names of the keys. Subsections within the treatment section of the metadata file can be renamed, but other section headers cannot.
 
 ### The main config file
-This file consists of 3 sections:
+This file consists of 2 sections:
 - input:
     - target_folder: The default option for the processing target
     - method: What method to use for determining if cells reacted to an agonist. Valid values are "baseline", "previous", and "derivative".
@@ -29,13 +36,15 @@ This file consists of 3 sections:
 ### The metadata files
 These have 2 section:
 - conditions:
-    - ratiometric_dye: 1 if you're using Fura2 and 0 otherwise. (Technically other values considered true and false by Python are also acceptable, but let's keep it simple. 0 and 1.)
+    - ratiometric_dye: "true" if you're using Fura2 and "false" otherwise.
     - group1 and group2: These describe the experimental groups to be compared. Can be any string values, make sure to put them in quotation marks. Also these group names must be present in the individual file names as the actual grouping is done by checking which group name the file name contains.
-- treatments: Consists of subsections, one for each agonist you've applied during the measurement. Subsections need to be named "treatments.something", without the quotation marks. The first subsection is expected to be called baseline, others can be named whatever you want (so long as you follow the treatments. naming convention). In the sample file the subsections are indented, but they don't have to be. If you add more subsections, each must have its name in square brackets and contain two keys, one called begin and one called end. The end value should be equal to the next agonist's begin value, or the total number of frames in the measurement for the final agonist used (which in a neuron context is usually potassium chloride, which should be called K+.) The values for these two keys describe when a given agonist treatment began and ended, respectively. They should be integers.
+- treatments: Consists of subsections, one for each agonist you've applied during the measurement. Subsections need to be named [treatments.something]. The first subsection is expected to be called baseline, others can be named whatever you want (so long as you follow the treatments. naming convention). In the sample file the subsections are indented, but they don't have to be. If you add more subsections, each must have its name in square brackets and contain two keys, one called begin and one called end. The end value should be equal to the next agonist's begin value, or the total number of frames in the measurement for the final agonist used (which in a neuron context is usually potassium chloride, which should be called KCl.) The values for these two keys describe when a given agonist treatment began and ended, respectively. They should be integers.
+
+Note: The reason an agonist's end value and the next agonist's begin value can be the same number is that when you take a slice of some sequence in Python like this: sequence[0:60] the first index is inclusive but the second one is not, so the slices [0:60] and [60:120] will not overlap. And the reason the end value and the next begin should be the same is that this guarantees detection of slow reactions where the cell does react to the given agonist, but not necessarily in the time window when said agonist is applied.
 
 TODO:
 - switch to uv
-- update documentation and provide install instructions
+- ~~update documentation~~ and provide install instructions
 - replace tk.Text with tk.Entry everywhere
 - maybe add config options to change properties (size, color, ...) of the graphs
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
