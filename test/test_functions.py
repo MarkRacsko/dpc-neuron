@@ -1,4 +1,4 @@
-from functions import validate_config, validate_metadata, validate_treatments
+from ..functions import validate_config, validate_metadata, validate_treatments
 from pathlib import Path
 from typing import Any
 
