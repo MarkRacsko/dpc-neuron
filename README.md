@@ -43,7 +43,6 @@ These have 2 section:
 Note: The reason an agonist's end value and the next agonist's begin value can be the same number is that when you take a slice of some sequence in Python like this: sequence[0:60] the first index is inclusive but the second one is not, so the slices [0:60] and [60:120] will not overlap. And the reason the end value and the next begin should be the same is that this guarantees detection of slow reactions where the cell does react to the given agonist, but not necessarily in the time window when said agonist is applied.
 
 TODO:
-- switch to uv
 - ~~update documentation~~ and provide install instructions
 - replace tk.Text with tk.Entry everywhere
 - maybe add config options to change properties (size, color, ...) of the graphs
