@@ -154,7 +154,7 @@ class MainWindow:
         if proc:
             error_list = data_analyzer.process_data()
             for error in error_list:
-                messagebox.showerror(error) # if the list is empty, nothing will happen
+                messagebox.showerror(message=error) # if the list is empty, nothing will happen
         if tab:
             data_analyzer.tabulate_data()
         if graph:

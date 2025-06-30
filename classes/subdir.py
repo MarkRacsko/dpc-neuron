@@ -286,5 +286,5 @@ class SubDir:
         with pd.ExcelWriter(self.report_path) as writer:
             self.report.to_excel(writer, sheet_name="Cells", index=False)
             cols = [c for c in self.treatment_col_names if "_reaction" in c]
-            stats = self.report[["cell_type"] + cols].value_counts()
+            stats = self.report[["cell_type", "condition"] + cols].value_counts()
             stats.to_excel(writer, sheet_name="Summary")
