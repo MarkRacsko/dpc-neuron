@@ -5,7 +5,7 @@ from tkinter import filedialog
 from typing import Any
 from pathlib import Path
 from itertools import cycle
-from functions import validate_treatments, str_entry, int_entry
+from functions import int_entry, str_entry, validate_treatments, remove_empty_values
 from .analyzer import DataAnalyzer
 
 FONT_L = ("Arial", 18)
@@ -39,6 +39,20 @@ MESSAGES: dict[tuple[int, int, int], str] = {
     (1, 0, 1): "Finished processing data and making graphs.",
     (0, 1, 1): "Finished tabulating results and making graphs.",
     (1, 1, 1): "Finished processing data, tabulating results, and making graphs."
+}
+
+METADATA_TEMPLATE = {
+    "conditions": {
+        "ratiometric_dye": "true",
+        "group1": "",
+        "group2": ""
+    },
+    "treatments": {
+        "baseline": {
+            "begin": 0,
+            "end": 60
+        }
+    }
 }
 
 class MainWindow:
@@ -263,7 +277,7 @@ class MetadataFrame(tk.Frame):
         self.target_path = tk.StringVar(value="./data")
         self.browse_button_width = button_width
         self.browse_button_height = button_height
-        self.metadata_path = tk.StringVar()
+        self.selected_folder = tk.StringVar()
 
     def update_frame(self):
         """
@@ -273,7 +287,7 @@ class MetadataFrame(tk.Frame):
         # Folder selector button
         self.metabata_browse_button = tk.Button(self, text="Select\nfolder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
         self.metabata_browse_button.place(x=BASE_X + 2.4 * PADDING_X, y=BASE_Y, width=self.browse_button_width, height=self.browse_button_height)
-        if not self.metadata_path.get():
+        if not self.selected_folder.get():
             self.select_measurement_folder_and_load_metadata()
         
         # Conditions section
@@ -325,10 +339,13 @@ class MetadataFrame(tk.Frame):
     def select_measurement_folder_and_load_metadata(self) -> None:
         path = filedialog.askdirectory(title="Select measurement folder")
         if path:
-            self.metadata_path.set(path)
-        
-            with open(Path(self.metadata_path.get()) / "metadata.toml", "r") as f:
-                self.metadata = toml.load(f)
+            self.selected_folder.set(path)
+
+            try:
+                with open(Path(self.selected_folder.get()) / "metadata.toml", "r") as f:
+                    self.metadata = toml.load(f)
+            except FileNotFoundError:
+                self.metadata = METADATA_TEMPLATE
 
     def save_metadata(self) -> None:
         self.metadata["conditions"]["ratiometric_dye"] = self.sec_1_value_1_button["text"]
@@ -337,13 +354,19 @@ class MetadataFrame(tk.Frame):
         self.treatment_table.save_values()
         self.metadata["treatments"] = self.treatment_table.treatments
 
+        try:
+            self.metadata["treatments"] = remove_empty_values(self.metadata["treatments"])
+        except ValueError:
+            messagebox.showerror(message="Please make sure all intended begin and end fields are filled.")
+            return
+
         passed_tests: list[bool] = validate_treatments(self.metadata["treatments"])
         error_message = "Please make sure that:"
         if all(passed_tests):
             for agonist in self.metadata["treatments"]:
                 self.metadata["treatments"][agonist]["begin"] = int(self.metadata["treatments"][agonist]["begin"])
                 self.metadata["treatments"][agonist]["end"] = int(self.metadata["treatments"][agonist]["end"])
-            with open(Path(self.metadata_path.get()) / "metadata.toml", "w") as metadata:
+            with open(Path(self.selected_folder.get()) / "metadata.toml", "w") as metadata:
                 toml.dump(self.metadata, metadata)
                 messagebox.showinfo(message="Metadata saved!")
                 return # so that the error message is not displayed when there is no error
@@ -362,7 +385,7 @@ class TreatmentTable(tk.Frame):
     COL_1_X = 0
     COL_2_X = 120
     COL_3_X = 240
-    def __init__(self, parent, treatments: dict[str, dict[str, int]], **kwargs):
+    def __init__(self, parent, treatments: dict[str, dict[str, int | str]], **kwargs):
         super().__init__(parent, **kwargs)
         self.treatments = treatments
         self.add_row_button = tk.Button(self, text="Add row", font=FONT_M, command=self.add_row)
@@ -375,7 +398,8 @@ class TreatmentTable(tk.Frame):
         self.end_label.place(x=self.COL_3_X, y=self.LABEL_ROW_Y)
         self.rows: list[list[tk.Entry]] = []
         
-        for _ in range(len(self.treatments)):
+        for _ in range(max(len(self.treatments), 5)):
+            # we want at least 5 rows
             self.rows.append([str_entry(self), int_entry(self), int_entry(self)])
 
         self.fill_values()

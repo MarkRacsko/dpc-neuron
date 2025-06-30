@@ -103,6 +103,36 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_amp"] = amplitudes.flatten()
 
 
+def remove_empty_values(treatments: dict[str, dict[str, int | str]]) -> dict[str, dict[str, int | str]]:
+    """Checks the treatments dictionary that comes from the table in the GUI metadata editor for empty rows and 
+    removes them.
+
+    Args:
+        treatments (dict[str, dict[str, int  |  str]]): The treatment dictionary mapping agonist names to a dict of 
+        begin and end values.
+
+    Raises:
+        ValueError: If there is a treatment where exactly one of the begin and end values is the empty string, ie. the
+        user filled only one entry.
+
+    Returns:
+        dict[str, dict[str, int | str]]: The same dictionary but with empty rows removed.
+    """
+    result: dict[str, dict[str, int | str]] = {}
+    for treatment, data in treatments.items():
+        begin_value = data["begin"]
+        end_value = data["end"]
+        if begin_value == "" and end_value == "":
+            # this is an empty row, exclude it
+            continue
+        elif begin_value == "" or end_value == "":
+            # this row has only 1 missing value, this is an error
+            raise ValueError
+        else:
+            # this row is good
+            result[treatment] = data
+    return result
+
 def validate_config(config: dict[str, dict[str, Any]]) -> str:
     message: str = "Errors encountered:"
     starting_len = len(message)
@@ -154,7 +184,7 @@ def validate_config(config: dict[str, dict[str, Any]]) -> str:
     else:
         return ""
 
-def validate_treatments(treatments: dict[str, dict[str, int]]) -> list[bool]:
+def validate_treatments(treatments: dict[str, dict[str, int | str]]) -> list[bool]:
 
     previous_end: int = 0
     passed_tests: list[bool] = [True, True, True]
@@ -170,10 +200,10 @@ def validate_treatments(treatments: dict[str, dict[str, int]]) -> list[bool]:
 
             if begin < previous_end:
                 passed_tests[2] = False
+            
+            previous_end = end 
         except ValueError:
             passed_tests[0] = False
-
-        previous_end = end
 
     return passed_tests
 
@@ -207,7 +237,4 @@ def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
     if len(errors) > starting_len:
         return errors
     else:
-        return ""
-    
-
-    
+        return ""    
