@@ -17,8 +17,10 @@ class SubDir:
         self.has_report: bool = False
         self.conditions: dict[str, str]
 
-    def preprocessing(self, repeat: bool):
-        self.parse_metadata()
+    def preprocessing(self, repeat: bool) -> str | None:
+        errors = self.parse_metadata()
+        if errors:
+            return errors
 
         if self.report_path.exists() and not repeat:
             self.has_report = True
