@@ -5,11 +5,13 @@ import numpy as np
 from typing import Any
 from numbers import Rational
 from pathlib import Path
+from numba import njit
 
 
 def normalize(array: np.ndarray, baseline) -> np.ndarray:
     return array / array[0:baseline].mean()
 
+@njit
 def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
     """This function performs a sliding window type smoothing on an array representing a Ca trace.
 

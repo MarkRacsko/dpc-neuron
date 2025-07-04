@@ -1,26 +1,36 @@
 import numpy as np
 import pandas as pd
-import openpyxl
 import toml
 from pathlib import Path
 from functions import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold, validate_metadata
 from matplotlib.figure import Figure
 from typing import Optional
+from threading import Lock
+from .converter import Converter
 
 class SubDir:
+    _finished_files: int = 0
+    _lock = Lock()
+
     def __init__(self, path: Path, report_name: str) -> None:
         self.path = path
+        self.cache_path = path / ".cache"
         self.report_path = path / f"{report_name}{path.name}.xlsx"
+        self.converter = Converter(path, self.cache_path, self.report_path)
         self.treatment_col_names: list[str] = []
         self.treatment_windows: dict[str, slice[int]] = {}
         self.report: Optional[pd.DataFrame] = None
         self.has_report: bool = False
         self.conditions: dict[str, str]
+        self.measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
 
     def preprocessing(self, repeat: bool) -> str | None:
         errors = self.parse_metadata()
         if errors:
             return errors
+        if not self.cache_path.exists():
+            Path.mkdir(self.cache_path)
+            self.converter.convert_to_feather()
 
         if self.report_path.exists() and not repeat:
             self.has_report = True
@@ -52,7 +62,6 @@ class SubDir:
         if self.has_report:
             return
                 
-        measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
         output_columns = ["cell_ID", "condition", "cell_type"] + self.treatment_col_names
 
         # self.report = pd.DataFrame(columns=output_columns)
@@ -60,14 +69,14 @@ class SubDir:
         cell_ID: int = 0
         bad_groups_files: list[Path] = []
         bad_sheet_files: list[Path] = []
-        for file in measurement_files:
+        for file in self.measurement_files:
             file_result = pd.DataFrame(columns=output_columns)
             try:
                 if self.conditions["ratiometric_dye"].lower() == "true":
                     cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window)
                 else:
                     cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window)
-            except ValueError:
+            except SyntaxError:
                 bad_sheet_files.append(file)
                 continue
             # measurements with neurons only will be called "neuron only {number}.xlsx" whereas neuron + DPC is going to
@@ -103,6 +112,7 @@ class SubDir:
             file_result["cell_type"] = cell_cols
 
             results.append(file_result)
+            #self.update_file_count()
 
         self.report = pd.concat(results)
 
@@ -123,11 +133,10 @@ class SubDir:
             return message
 
     def make_graphs(self):
-        measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
         if self.report is None:
             self.report = pd.read_excel(self.report_path, sheet_name="Cells")
         
-        for file in measurement_files:
+        for file in self.measurement_files:
             graphing_path: Path = self.path / Path(file.stem)
             if not graphing_path.exists():
                 Path.mkdir(graphing_path)
@@ -190,8 +199,8 @@ class SubDir:
 
     def prepare_ratiometric_data(self, file: Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
         # read in 340 and 380 data separately
-        F340_data = pd.read_excel(file, sheet_name="F340")
-        F380_data = pd.read_excel(file, sheet_name="F380")
+        F340_data = pd.read_feather(self.cache_path / f"{file.name}.F340.feather")
+        F380_data = pd.read_feather(self.cache_path / f"{file.name}.F380.feather")
         cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
         
         # split the data
@@ -224,7 +233,7 @@ class SubDir:
         return cell_cols, ratios
     
     def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
-        data = pd.read_excel(file, sheet_name="Raw")
+        data = pd.read_feather(self.cache_path / f"{file.name}.Raw.feather")
         cell_cols = [c for c in data.columns if c not in {"Time", "Background"}]
         x_data, bgr, cells = data["Time"].to_numpy(), data["Background"].to_numpy(), data[cell_cols].to_numpy()
         x_data, bgr = x_data[:, np.newaxis], bgr[:, np.newaxis]
@@ -242,6 +251,10 @@ class SubDir:
         self.save_processed_data(file, x_data, cells, cell_cols, coeffs)
         return cell_cols, cells.transpose()
 
+    @classmethod
+    def update_file_count(cls):
+        with cls._lock:
+            cls._finished_files += 1
 
     def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray) -> None:
         col_names = ["Time"] + col_names
@@ -253,35 +266,21 @@ class SubDir:
         else:
             sheet_name: str = "Processed"
         
-        wb = openpyxl.load_workbook(file)
-        if sheet_name in wb.sheetnames: # this is only going to be true when --repeat is used
-            wb.remove(wb[sheet_name])
-        
-        ws = wb.create_sheet(sheet_name)
-        
-        ws.append(col_names)
-        for row in data.tolist(): # type: ignore
-            ws.append(row)
+        df = pd.DataFrame(data, columns=col_names)
+        df.to_feather(self.cache_path / f"{file.name}.{sheet_name}.feather")
 
-        sheet_name = "Coeffs"
-        if sheet_name in wb.sheetnames: # this is only going to be true when --repeat is used
-            wb.remove(wb[sheet_name])
-        
-        ws = wb.create_sheet(sheet_name)
-
-        coeffs = coeffs.tolist() # type: ignore
         if ratio:
             col_names[0] = "Wavelength"
-            first_col = ["340", "380"]
-            ws.append(col_names)
-            for coeff_id, coeff_values in zip(first_col, coeffs):
-                ws.append([coeff_id] + coeff_values)
+            first_col = np.array([340, 380])
+            first_col = first_col[:, np.newaxis]
+            coeffs = np.hstack((first_col, coeffs))
+            df = pd.DataFrame(coeffs, columns=col_names)
+            df.to_feather(self.cache_path / f"{file.name}.Coeffs.feather")
         else:
-            ws.append(col_names[1:])
-            ws.append(coeffs)
+            df = pd.DataFrame(coeffs, columns=col_names)
+            df.to_feather(self.cache_path / f"{file.name}.Coeffs.feather")
         # If we're not using a ratiometric dye, we only have one set of coefficients, but if we are using Fura, then we
         # have two, and we should save which is which.
-        wb.save(file)
 
     def save_report(self) -> None:
         assert self.report is not None # report is guaranteed not to be None by the time this method is called
