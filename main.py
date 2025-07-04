@@ -3,6 +3,7 @@ import toml
 from pathlib import Path
 from classes import DataAnalyzer
 from functions import validate_config
+from tkinter import IntVar
 
 
 def main():
@@ -50,7 +51,7 @@ def main():
         print(errors)
         exit()
     
-    data_analyzer = DataAnalyzer(config, args.repeat)
+    data_analyzer = DataAnalyzer(config, IntVar(), args.repeat)
     for subdir_path in data_path.iterdir():
         if subdir_path.is_dir():        
             error_message = data_analyzer.create_subdir_instance(subdir_path)

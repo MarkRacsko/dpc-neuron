@@ -6,10 +6,10 @@ from functions import normalize, smooth, baseline_threshold, previous_threshold,
 from matplotlib.figure import Figure
 from typing import Optional
 from threading import Lock
+from tkinter import IntVar
 from .converter import Converter
 
 class SubDir:
-    _finished_files: int = 0
     _error_lock = Lock()
     _file_count_lock = Lock()
 
@@ -57,7 +57,7 @@ class SubDir:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, error_list: list[str]) -> str | None:
+    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, finished_files: IntVar, error_list: list[str]) -> str | None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
         if self.has_report:
@@ -113,7 +113,7 @@ class SubDir:
             file_result["cell_type"] = cell_cols
 
             results.append(file_result)
-            self.update_file_count()
+            self.update_file_count(finished_files)
 
         self.report = pd.concat(results)
 
@@ -253,9 +253,9 @@ class SubDir:
         self.save_processed_data(file, x_data, cells, cell_cols, coeffs)
         return cell_cols, cells.transpose()
 
-    def update_file_count(self):
+    def update_file_count(self, count):
         with self._file_count_lock:
-            self._finished_files += 1
+            count.set(count.get() + 1)
 
     def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray) -> None:
         col_names = ["Time"] + col_names

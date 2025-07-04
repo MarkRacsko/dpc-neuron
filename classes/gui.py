@@ -3,6 +3,7 @@ import toml
 from tkinter import messagebox
 from tkinter import filedialog
 from typing import Any
+from threading import Thread
 from pathlib import Path
 from itertools import cycle
 from functions import int_entry, str_entry, validate_treatments, remove_empty_values
@@ -63,9 +64,9 @@ class MainWindow:
         
         self.current_mode = tk.StringVar(value="config")
         self.current_mode.trace_add("write", self.resize_window)
-        
-        
         self.root.resizable(False, True)
+
+        self.analyzer: DataAnalyzer
 
         # Browse target folder
         self.target_label = tk.Label(self.root, text="Data folder:", font=FONT_M)
@@ -82,7 +83,7 @@ class MainWindow:
         self.check_t.place(x=BASE_X, y=BASE_Y + PADDING_Y)
 
         # Graphing checkbox
-        self.check_g_state = tk.IntVar()
+        self.check_g_state = tk.IntVar(value=0)
         self.check_g = tk.Checkbutton(self.root, text="Make graphs", font=FONT_M, variable=self.check_g_state)
         self.check_g.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y)
 
@@ -91,6 +92,13 @@ class MainWindow:
         self.check_r = tk.Checkbutton(self.root, text="Repeat", font=FONT_M, variable=self.check_r_state)
         self.check_r.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y + PADDING_Y)
         
+        # Progress tracker
+        self.in_progress_label = tk.Label(self.root, text="Analysis in progress...", font=FONT_M)
+        self.finished_file_counter = tk.IntVar()
+        self.finished_file_counter.trace_add("write", self.update_counter)
+        self.finished_files_label = tk.Label(self.root, text="Files finished:", font=FONT_M)
+        self.finished_number_label = tk.Label(self.root, text="0", font=FONT_M)
+
         # Analyze button
         self.analyze_button = tk.Button(self.root, width=8, text="Analyze", font=FONT_L, command=self.analyze_button_press)
         self.analyze_button.place(x=BASE_X, y=3 * PADDING_Y, width=120, height=60)
@@ -117,7 +125,7 @@ class MainWindow:
         self.root.protocol("WM_DELETE_WINDOW", exit)
         self.root.mainloop()
     
-    def resize_window(self, *args):
+    def resize_window(self, *args) -> None:
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
 
     def analyze_button_press(self) -> None:
@@ -142,25 +150,29 @@ class MainWindow:
         # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
         self.config["input"]["target_folder"] = data_path
         
-        data_analyzer = DataAnalyzer(self.config, bool(self.check_r_state.get()))
+        self.analyzer = DataAnalyzer(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
         for subdir_path in data_path.iterdir():
             if subdir_path.is_dir():
-                error_message = data_analyzer.create_subdir_instance(subdir_path)
+                error_message = self.analyzer.create_subdir_instance(subdir_path)
                 if error_message:
                     messagebox.showerror(error_message)
 
         proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
-        
-        if proc:
-            error_list = data_analyzer.process_data()
-            for error in error_list:
-                messagebox.showerror(message=error) # if the list is empty, nothing will happen
-        if tab:
-            data_analyzer.tabulate_data()
-        if graph:
-            data_analyzer.graph_data()
+        worker_thread = Thread(target=self.analysis_work, args=(proc, tab, graph))
+        worker_thread.start()
 
-        messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])
+        self.analyze_button.place(x=OFFSCREEN_X)
+        self.config_button.place(x=OFFSCREEN_X)
+        self.metadata_button.place(x=OFFSCREEN_X)
+
+        self.in_progress_label.place(x=BASE_X, y=3 * PADDING_Y)
+        self.finished_files_label.place(x=BASE_X, y=4 * PADDING_Y)
+        self.finished_number_label.place(x=BASE_X + 140, y=4 * PADDING_Y)
+
+
+    def update_counter(self, *args) -> None:
+        self.finished_number_label.config(text=str(self.finished_file_counter.get()))
+        self.root.update_idletasks()
 
     def config_button_press(self) -> None:
         """
@@ -181,7 +193,28 @@ class MainWindow:
         self.current_mode.set("metadata")
         self.metadata_panel.update_frame()
         self.config_panel.place(x=OFFSCREEN_X)
-        self.metadata_panel.place(x=0, y=PANEL_Y)    
+        self.metadata_panel.place(x=0, y=PANEL_Y)
+
+    def analysis_work(self, proc, tab, graph) -> None:
+        error_list = []
+        if proc:
+            self.analyzer.process_data(error_list)
+            for error in error_list:
+                messagebox.showerror(message=error) # if the list is empty, nothing will happen
+        if tab:
+            self.analyzer.tabulate_data()
+        if graph:
+            self.analyzer.graph_data()
+
+        messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])
+
+        self.in_progress_label.place(x=OFFSCREEN_X)
+        self.finished_files_label.place(x=OFFSCREEN_X)
+        self.finished_number_label.place(x=OFFSCREEN_X)
+
+        self.analyze_button.place(x=BASE_X, y=3 * PADDING_Y, width=120, height=60)
+        self.config_button.place(x=BASE_X + 1.2 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
+        self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
 
 
 class ConfigFrame(tk.Frame):

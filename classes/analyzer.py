@@ -3,6 +3,7 @@ from pathlib import Path
 from .subdir import SubDir
 from typing import Any
 from threading import Thread
+from tkinter import IntVar
 
 type ExperimentalCondition = list[str]
 type ExperimentalData = tuple[str, pd.Series[int]]
@@ -15,10 +16,11 @@ class DataAnalyzer:
         repeat (bool): The --repeat command line flag as a bool. Tells the subdirectory level processors to skip already
         processed directories.
     """
-    def __init__(self, config: dict[str, dict[str, Any]], repeat: bool) -> None:
+    def __init__(self, config: dict[str, dict[str, Any]], finished_files: IntVar, repeat: bool) -> None:
         self.config = config
         self._subdirs: list[SubDir] = []
         self.repeat = repeat
+        self.finished_files = finished_files
         self.experiments: dict[ExperimentalCondition, list[ExperimentalData]]
 
     def create_subdir_instance(self, subdir_path: Path) -> str | None:
@@ -35,11 +37,14 @@ class DataAnalyzer:
         if error:
             return error
 
-    def process_data(self) -> list[str]:
+    def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
-        errors: list[str] = []
-        arg_tuple = (self.config["input"]["method"], self.config["input"]["SD_multiplier"], self.config["input"]["smoothing_range"], errors)
+        arg_tuple = (self.config["input"]["method"],
+                     self.config["input"]["SD_multiplier"],
+                     self.config["input"]["smoothing_range"],
+                     self.finished_files,
+                     errors)
         threads = []
         for subdir in self._subdirs:
             thread = Thread(target=subdir.make_report, args=arg_tuple)
@@ -48,7 +53,6 @@ class DataAnalyzer:
 
         for thread in threads:
             thread.join()
-        return errors
 
 
     def tabulate_data(self):

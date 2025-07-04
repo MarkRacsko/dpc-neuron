@@ -44,7 +44,6 @@ Note: The reason an agonist's end value and the next agonist's begin value can b
 
 TODO:
 - ~~update documentation~~ and provide install instructions
-- speed up the program
 - replace tk.Text with tk.Entry everywhere
 - maybe add config options to change properties (size, color, ...) of the graphs
 - try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs
