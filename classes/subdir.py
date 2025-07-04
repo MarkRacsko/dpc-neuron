@@ -10,7 +10,8 @@ from .converter import Converter
 
 class SubDir:
     _finished_files: int = 0
-    _lock = Lock()
+    _error_lock = Lock()
+    _file_count_lock = Lock()
 
     def __init__(self, path: Path, report_name: str) -> None:
         self.path = path
@@ -56,7 +57,7 @@ class SubDir:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int) -> str | None:
+    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, error_list: list[str]) -> str | None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
         if self.has_report:
@@ -112,7 +113,7 @@ class SubDir:
             file_result["cell_type"] = cell_cols
 
             results.append(file_result)
-            #self.update_file_count()
+            self.update_file_count()
 
         self.report = pd.concat(results)
 
@@ -130,7 +131,8 @@ class SubDir:
                 message += f"\n{str(f)}"
             message += "\nPlease consult the README and rename the sheet(s) appropriately."
         if message:
-            return message
+            with self._error_lock:
+                error_list.append(message)
 
     def make_graphs(self):
         if self.report is None:
@@ -251,10 +253,9 @@ class SubDir:
         self.save_processed_data(file, x_data, cells, cell_cols, coeffs)
         return cell_cols, cells.transpose()
 
-    @classmethod
-    def update_file_count(cls):
-        with cls._lock:
-            cls._finished_files += 1
+    def update_file_count(self):
+        with self._file_count_lock:
+            self._finished_files += 1
 
     def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray) -> None:
         col_names = ["Time"] + col_names

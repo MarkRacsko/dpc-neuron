@@ -1,6 +1,4 @@
 import argparse
-import cProfile
-import pstats
 import toml
 from pathlib import Path
 from classes import DataAnalyzer
@@ -57,15 +55,12 @@ def main():
         if subdir_path.is_dir():        
             error_message = data_analyzer.create_subdir_instance(subdir_path)
             if error_message:
-                print(error_message)
-    with cProfile.Profile() as pr:    
-        if processing:
-            error_list = data_analyzer.process_data()
-            for error in error_list:
-                print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed
-    stats = pstats.Stats(pr)
-    stats.sort_stats(pstats.SortKey.TIME)
-    stats.dump_stats("./profile_cached_numba.prof")
+                print(error_message)  
+    
+    if processing:
+        error_list = data_analyzer.process_data()
+        for error in error_list:
+            print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed
     if tabulating:
         data_analyzer.tabulate_data()
     if args.graph:

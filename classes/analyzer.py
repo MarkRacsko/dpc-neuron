@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 from .subdir import SubDir
 from typing import Any
+from threading import Thread
 
 type ExperimentalCondition = list[str]
 type ExperimentalData = tuple[str, pd.Series[int]]
@@ -38,12 +39,15 @@ class DataAnalyzer:
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
         errors: list[str] = []
+        arg_tuple = (self.config["input"]["method"], self.config["input"]["SD_multiplier"], self.config["input"]["smoothing_range"], errors)
+        threads = []
         for subdir in self._subdirs:
-            error = subdir.make_report(method=self.config["input"]["method"],
-                            sd_multiplier=self.config["input"]["SD_multiplier"],
-                            smoothing_window=self.config["input"]["smoothing_range"])
-            if error:
-                errors.append(error)
+            thread = Thread(target=subdir.make_report, args=arg_tuple)
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
         return errors
 
 
