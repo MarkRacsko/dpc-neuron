@@ -88,7 +88,24 @@
         - treatment begin or end values not integers
         - a begin value is larger than or equal to its corresponding end value
         - a begin value is smaller than the preceding end value
-    
+
+- Make IO operations faster because openpyxl is painfully slow:
+    1. Use calamine engine instead
+    2. Use a faster file format like json or feather
+    3. Use multithreading because the program is overwhelmingly IO bound (90% of processing time spent on IO)
+
+- Conversion utility:
+    - has a list of every subfolder
+    - conversion to feather:
+        1. for folder in subfolders:
+        2. list target files
+        3. check if a cache folder exists, if not, make one
+        4. for every measurement file:
+            1. read file with calamine
+            2. for every sheet in the file:
+            3. filename = original file name - xlsx + . + sheetname + .feather
+            4. if filename does not exist: df.to_feather(cache/filename)
+
 # Planned structure of the project
 What the program should be doing:
 1. Read config file, which will store options that would be inconvenient to have to pass everytime or to make into magic strings/values.
