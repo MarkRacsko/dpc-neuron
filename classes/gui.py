@@ -6,7 +6,7 @@ from typing import Any
 from threading import Thread
 from pathlib import Path
 from itertools import cycle
-from functions import int_entry, str_entry, validate_treatments, remove_empty_values
+from functions import int_entry, str_entry, validate_config, validate_treatments, remove_empty_values
 from .analyzer import DataAnalyzer
 
 FONT_L = ("Arial", 18)
@@ -137,12 +137,10 @@ class MainWindow:
     def analyze_button_press(self) -> None:
         data_path = Path(self.target_path.get())
         if not data_path.exists():
-            # better error handling needed, for now I will leave it as-is
-            print("Target not found. Exiting.")
-            exit()
+            messagebox.showerror(message="Target folder not found.")
+            return
         if not data_path.is_dir():
-            print("Target isn't a folder. Exiting.")
-            exit()
+            messagebox.showerror(message="Target isn't a folder.")
 
         method = self.config["input"]["method"]
         if method not in ["baseline", "previous", "derivative"]:
@@ -310,14 +308,15 @@ class ConfigFrame(tk.Frame):
         """
         self.config["input"]["target_folder"] = self.target_path.get()
         self.config["input"]["method"] = self.selected_method.get()
-        try:
-            self.config["input"]["SD_multiplier"] = int(self.sec_1_value_3_entry.get())
-            self.config["input"]["smoothing_range"] = int(self.sec_1_value_4_entry.get())
-        except ValueError:
-            # error message to be implemented
-            pass
+        self.config["input"]["SD_multiplier"] = int(self.sec_1_value_3_entry.get())
+        self.config["input"]["smoothing_range"] = int(self.sec_1_value_4_entry.get())
         self.config["output"]["report_name"] = self.sec_2_value_1_entry.get()
         self.config["output"]["summary_name"] = self.sec_2_value_2_box.get()
+
+        errors = validate_config(self.config)
+        if errors:
+            messagebox.showerror(errors)
+            return
 
         with open(Path("./config.toml"), "w") as f:
             toml.dump(self.config, f)
