@@ -1,6 +1,8 @@
 from numbers import Rational
 from pathlib import Path
 from typing import Any
+from classes import Treatments
+from functions import dict_to_treatments
 
 
 def validate_config(config: dict[str, dict[str, Any]]) -> str:
@@ -16,10 +18,7 @@ def validate_config(config: dict[str, dict[str, Any]]) -> str:
     starting_len = len(message)
     try:
         data_path = Path(config["input"]["target_folder"])
-        if not data_path.exists():
-            message += "\n- target folder not found."
-        elif not data_path.is_dir():
-            message += "\n- target isn't a folder."
+        message += validate_data_path(data_path)
     except KeyError:
         message += "\n- target_folder key missing from input section"
 
@@ -62,8 +61,19 @@ def validate_config(config: dict[str, dict[str, Any]]) -> str:
     else:
         return ""
 
+def validate_data_path(data_path: str | Path) -> str:
+    if isinstance(data_path, str):
+        data_path = Path(data_path)
 
-def validate_treatments(treatments: dict[str, dict[str, int | str]]) -> list[bool]:
+    message = ""
+    if not data_path.exists():
+        message += "\n- target folder not found."
+    elif not data_path.is_dir():
+        message += "\n- target isn't a folder."
+
+    return message
+            
+def validate_treatments(treatments: Treatments) -> list[bool]:
     """Checks values in the treatment dictionary for correctness. Returns a list of booleans that represent which tests
     were passed and which failed.
 
@@ -79,8 +89,8 @@ def validate_treatments(treatments: dict[str, dict[str, int | str]]) -> list[boo
     # we start by assuming that the tests pass, and set a value to False whenever the corresponding test fails
     passed_tests: list[bool] = [True, True, True]
     for agonist in treatments:
-        begin = treatments[agonist]["begin"]
-        end = treatments[agonist]["end"]
+        begin = treatments[agonist].begin
+        end = treatments[agonist].end
 
         try:
             begin = int(begin)
@@ -123,7 +133,7 @@ def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
     except KeyError:
         errors += "\nConditions section missing or incorrectly named."
     try:
-        treatments = metadata["treatments"]
+        treatments = dict_to_treatments(metadata["treatments"])
         treatment_errors = validate_treatments(treatments)
         if not treatment_errors[0]:
             errors += "\nAll begin and end values must be integers."

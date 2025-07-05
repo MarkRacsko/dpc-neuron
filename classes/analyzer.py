@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 from .subdir import SubDir
-from typing import Any
+from .toml_data import Config
 from threading import Thread
 from tkinter import IntVar
 
@@ -16,7 +16,7 @@ class DataAnalyzer:
         repeat (bool): The --repeat command line flag as a bool. Tells the subdirectory level processors to skip already
         processed directories.
     """
-    def __init__(self, config: dict[str, dict[str, Any]], finished_files: IntVar, repeat: bool) -> None:
+    def __init__(self, config: Config, finished_files: IntVar, repeat: bool) -> None:
         self.config = config
         self._subdirs: list[SubDir] = []
         self.repeat = repeat
@@ -30,7 +30,7 @@ class DataAnalyzer:
             subdir_path (Path): Path to this subdirectory in the target directory we are processing.
             repeat (bool): The --repeat command line flag as a bool.
         """
-        instance = SubDir(subdir_path, self.config["output"]["report_name"])
+        instance = SubDir(subdir_path, self.config.output.report_name)
         error = instance.preprocessing(self.repeat)
         self._subdirs.append(instance)
         
@@ -40,9 +40,9 @@ class DataAnalyzer:
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
-        arg_tuple = (self.config["input"]["method"],
-                     self.config["input"]["SD_multiplier"],
-                     self.config["input"]["smoothing_range"],
+        arg_tuple = (self.config.input.method,
+                     self.config.input.SD_multiplier,
+                     self.config.input.smoothing_range,
                      self.finished_files,
                      errors)
         threads = []
@@ -58,8 +58,8 @@ class DataAnalyzer:
     def tabulate_data(self):
         """Creates a summary file from all available measurement reports.
         """
-        sum_conf = self.config["output"]
-        summary_file_name: Path = self.config["input"]["target_folder"] / f"{sum_conf["summary_name"]}.xlsx"
+        sum_conf = self.config.output
+        summary_file_name: Path = self.config.input.target_folder / f"{sum_conf.summary_name}.xlsx"
         for subdir in self._subdirs:
             
             subdir.load_summary_from_report()

@@ -2,13 +2,14 @@ import tkinter as tk
 import toml
 from tkinter import messagebox
 from tkinter import filedialog
-from typing import Any
 from threading import Thread
 from pathlib import Path
 from itertools import cycle
-from functions import int_entry, str_entry, remove_empty_values
-from functions.validation import validate_config, validate_treatments
+from functions import int_entry, str_entry
+from functions import validate_config, validate_treatments
+from functions import config_to_dict, dict_to_metadata, metadata_to_dict
 from .analyzer import DataAnalyzer
+from .toml_data import Config, Metadata, Treatments
 
 FONT_L = ("Arial", 18)
 FONT_M = ("Arial", 16)
@@ -62,7 +63,7 @@ METADATA_TEMPLATE = {
 }
 
 class MainWindow:
-    def __init__(self, config: dict[str, dict[str, Any]]) -> None:
+    def __init__(self, config: Config) -> None:
         self.config = config
         self.root = tk.Tk()
         self.root.title("Ca Measurement Analyzer")
@@ -143,7 +144,7 @@ class MainWindow:
         if not data_path.is_dir():
             messagebox.showerror(message="Target isn't a folder.")
 
-        method = self.config["input"]["method"]
+        method = self.config.input.method
         if method not in ["baseline", "previous", "derivative"]:
             # this is here and not where the check is actually relevant in order to avoid unnecessary IO and processing
             # operations if the user made a mistake and the program would crash anyway
@@ -153,7 +154,7 @@ class MainWindow:
         
         # this is so the analyzer object will have access to the target path for saving the tabulated summary
         # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
-        self.config["input"]["target_folder"] = data_path
+        self.config.input.target_folder = data_path
         
         self.analyzer = DataAnalyzer(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
         for subdir_path in data_path.iterdir():
@@ -234,7 +235,7 @@ class MainWindow:
 class ConfigFrame(tk.Frame):
     """Displayed in Config Editor mode. Will be moved offscreen when the program switches to a different mode.
     """
-    def __init__(self, parent, config: dict[str, dict[str, Any]], save_button_size: int, **kwargs):
+    def __init__(self, parent, config: Config, save_button_size: int, **kwargs):
         super().__init__(parent, **kwargs)
         self.target_path = tk.StringVar(value="./data")
         self.config = config
@@ -252,7 +253,7 @@ class ConfigFrame(tk.Frame):
         self.sec_1_key_2_label = tk.Label(self, text="Method:", font=FONT_M)
         self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
         self.selected_method = tk.StringVar()
-        self.selected_method.set(self.config["input"]["method"])
+        self.selected_method.set(self.config.input.method)
         self.method_options: list[str] = ["baseline", "previous", "derivative"]
         self.sec_1_value_2_menu = tk.OptionMenu(self, self.selected_method, *self.method_options)
         self.sec_1_value_2_menu.place(x=BASE_X + EDITOR_PADDING_X - 1, y=SECTION_1_BASE_Y + 2 * PADDING_Y, width=105, height=30)
@@ -263,14 +264,14 @@ class ConfigFrame(tk.Frame):
         self.sec_1_value_3_entry = int_entry(self)
         self.sec_1_value_3_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
         self.sec_1_value_3_entry.delete(0, tk.END)
-        self.sec_1_value_3_entry.insert(0, self.config["input"]["SD_multiplier"])
+        self.sec_1_value_3_entry.insert(0, str(self.config.input.SD_multiplier))
 
         # Smoothing range
         self.sec_1_key_4_label = tk.Label(self, text="Smoothing range:", font=FONT_M)
         self.sec_1_key_4_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
         self.sec_1_value_4_entry = int_entry(self)
         self.sec_1_value_4_entry.delete(0, tk.END)
-        self.sec_1_value_4_entry.insert(0, self.config["input"]["smoothing_range"])
+        self.sec_1_value_4_entry.insert(0, str(self.config.input.smoothing_range))
         self.sec_1_value_4_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
 
         # Output section
@@ -283,7 +284,7 @@ class ConfigFrame(tk.Frame):
         self.sec_2_value_1_entry = str_entry(self)
         self.sec_2_value_1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
         self.sec_2_value_1_entry.delete(0, tk.END)
-        self.sec_2_value_1_entry.insert(0, self.config["output"]["report_name"])
+        self.sec_2_value_1_entry.insert(0, self.config.output.report_name)
 
         # Summary name
         self.sec_2_key_2_label = tk.Label(self, text="Summary name:", font=FONT_M)
@@ -291,7 +292,7 @@ class ConfigFrame(tk.Frame):
         self.sec_2_value_2_box = str_entry(self)
         self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
         self.sec_2_value_2_box.delete(0, tk.END)
-        self.sec_2_value_2_box.insert(0, self.config["output"]["summary_name"])
+        self.sec_2_value_2_box.insert(0, self.config.output.summary_name)
         
         # Save button for config file
         self.save_config_button = tk.Button(self, text="Save", font=FONT_L, command=self.save_config)
@@ -307,20 +308,21 @@ class ConfigFrame(tk.Frame):
     def save_config(self) -> None:
         """Called by the Save button to write the config file to disk.
         """
-        self.config["input"]["target_folder"] = self.target_path.get()
-        self.config["input"]["method"] = self.selected_method.get()
-        self.config["input"]["SD_multiplier"] = int(self.sec_1_value_3_entry.get())
-        self.config["input"]["smoothing_range"] = int(self.sec_1_value_4_entry.get())
-        self.config["output"]["report_name"] = self.sec_2_value_1_entry.get()
-        self.config["output"]["summary_name"] = self.sec_2_value_2_box.get()
+        self.config.input.target_folder = Path(self.target_path.get())
+        self.config.input.method = self.selected_method.get()
+        self.config.input.SD_multiplier = int(self.sec_1_value_3_entry.get())
+        self.config.input.smoothing_range = int(self.sec_1_value_4_entry.get())
+        self.config.output.report_name = self.sec_2_value_1_entry.get()
+        self.config.output.summary_name = self.sec_2_value_2_box.get()
 
-        errors = validate_config(self.config)
+        config_as_dict = config_to_dict(self.config)
+        errors = validate_config(config_as_dict)
         if errors:
             messagebox.showerror(errors)
             return
 
         with open(Path("./config.toml"), "w") as f:
-            toml.dump(self.config, f)
+            toml.dump(config_as_dict, f)
 
 
 class MetadataFrame(tk.Frame):
@@ -328,10 +330,10 @@ class MetadataFrame(tk.Frame):
     """
     def __init__(self, parent, button_width: int, button_height: int, **kwargs):
         super().__init__(parent, **kwargs)
-        self.target_path = tk.StringVar(value="./data")
         self.browse_button_width = button_width
         self.browse_button_height = button_height
         self.selected_folder = tk.StringVar()
+        self.metadata: Metadata
 
     def update_frame(self):
         """
@@ -351,7 +353,7 @@ class MetadataFrame(tk.Frame):
         # Ratiometric dye
         self.sec_1_key_1_label = tk.Label(self, text="Ratiometric dye:", font=FONT_M)
         self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
-        self.sec_1_value_1_button = tk.Button(self, text=f"{self.metadata["conditions"]["ratiometric_dye"]}", font=FONT_M, command=self.ratiometric_switch)
+        self.sec_1_value_1_button = tk.Button(self, text=f"{self.metadata.conditions.ratiometric_dye}", font=FONT_M, command=self.ratiometric_switch)
         self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
 
         # Group1
@@ -359,7 +361,7 @@ class MetadataFrame(tk.Frame):
         self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
         self.sec_1_value_2_box = str_entry(self)
         self.sec_1_value_2_box.delete(0, tk.END)
-        self.sec_1_value_2_box.insert(0, self.metadata["conditions"]["group1"])
+        self.sec_1_value_2_box.insert(0, self.metadata.conditions.group1)
         self.sec_1_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
 
         # Group2
@@ -368,13 +370,13 @@ class MetadataFrame(tk.Frame):
         self.sec_1_value_3_box = str_entry(self)
         self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
         self.sec_1_value_3_box.delete(0, tk.END)
-        self.sec_1_value_3_box.insert(0, self.metadata["conditions"]["group2"])
+        self.sec_1_value_3_box.insert(0, self.metadata.conditions.group2)
 
         # Treatment section
         self.sec_2_label = tk.Label(self, text="Treatment section", font=FONT_L)
         self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
 
-        treatments = self.metadata["treatments"]     
+        treatments = self.metadata.treatments  
         self.update_idletasks()
         self.treatment_table = TreatmentTable(self, treatments, width=440, height=490)
         self.treatment_table.place(x=BASE_X + 40, y=BOTTOM_BUTTONS_Y)
@@ -402,35 +404,37 @@ class MetadataFrame(tk.Frame):
 
             try:
                 with open(Path(self.selected_folder.get()) / "metadata.toml", "r") as f:
-                    self.metadata = toml.load(f)
+                    metadata = toml.load(f)
+                    self.metadata = dict_to_metadata(metadata)
             except FileNotFoundError:
-                self.metadata = METADATA_TEMPLATE
+                self.metadata = dict_to_metadata(METADATA_TEMPLATE)
 
     def save_metadata(self) -> None:
         """Called by the Save Metadata button. Updates the metadata object with values entered by the user, then
         validates that these values are correct, displaying an error message if any mistakes are found. If not mistakes
         are found, it saves the metadata as metadata.toml in the selected folder.
         """
-        self.metadata["conditions"]["ratiometric_dye"] = self.sec_1_value_1_button["text"]
-        self.metadata["conditions"]["group1"] = self.sec_1_value_2_box.get()
-        self.metadata["conditions"]["group2"] = self.sec_1_value_3_box.get()
+        self.metadata.conditions.ratiometric_dye = self.sec_1_value_1_button["text"]
+        self.metadata.conditions.group1 = self.sec_1_value_2_box.get()
+        self.metadata.conditions.group2 = self.sec_1_value_3_box.get()
         self.treatment_table.save_values()
-        self.metadata["treatments"] = self.treatment_table.treatments
+        self.metadata.treatments = self.treatment_table.treatments
 
         try:
-            self.metadata["treatments"] = remove_empty_values(self.metadata["treatments"])
+            self.metadata.treatments.remove_empty_values()
         except ValueError:
             messagebox.showerror(message="Please make sure all intended begin and end fields are filled.")
             return
 
-        passed_tests: list[bool] = validate_treatments(self.metadata["treatments"])
+        passed_tests: list[bool] = validate_treatments(self.metadata.treatments)
         error_message = "Please make sure that:"
         if all(passed_tests):
-            for agonist in self.metadata["treatments"]:
-                self.metadata["treatments"][agonist]["begin"] = int(self.metadata["treatments"][agonist]["begin"])
-                self.metadata["treatments"][agonist]["end"] = int(self.metadata["treatments"][agonist]["end"])
+            for agonist in self.metadata.treatments:
+                self.metadata.treatments[agonist].begin = int(self.metadata.treatments[agonist].begin)
+                self.metadata.treatments[agonist].end = int(self.metadata.treatments[agonist].end)
             with open(Path(self.selected_folder.get()) / "metadata.toml", "w") as metadata:
-                toml.dump(self.metadata, metadata)
+                metadata_as_dict = metadata_to_dict(self.metadata)
+                toml.dump(metadata_as_dict, metadata)
                 messagebox.showinfo(message="Metadata saved!")
                 return # so that the error message is not displayed when there is no error
         if not passed_tests[0]:
@@ -450,7 +454,7 @@ class TreatmentTable(tk.Frame):
     COL_1_X = 0
     COL_2_X = 120
     COL_3_X = 240
-    def __init__(self, parent, treatments: dict[str, dict[str, int | str]], **kwargs):
+    def __init__(self, parent, treatments: Treatments, **kwargs):
         super().__init__(parent, **kwargs)
         self.treatments = treatments
         self.add_row_button = tk.Button(self, text="Add row", font=FONT_M, command=self.add_row)
@@ -463,7 +467,7 @@ class TreatmentTable(tk.Frame):
         self.end_label.place(x=self.COL_3_X, y=self.LABEL_ROW_Y)
         self.rows: list[list[tk.Entry]] = []
         
-        for _ in range(max(len(self.treatments), 5)):
+        for _ in range(max(self.treatments.length, 5)):
             # we want at least 5 rows
             self.rows.append([str_entry(self), int_entry(self), int_entry(self)])
 
@@ -491,21 +495,19 @@ class TreatmentTable(tk.Frame):
     def save_values(self) -> None:
         """Updates the treatments dictionary with values entered by the user.
         """
-        self.treatments = {}
+        treatments = Treatments()
         for row in self.rows:
-            name = row[0].get()
-            begin = row[1].get()
-            end = row[2].get()
+            treatments[row[0].get()] = (row[1].get(), row[2].get())
 
-            self.treatments[name] = {"begin": begin, "end": end}
+        self.treatments = treatments
 
 
     def fill_values(self) -> None:
         """Loads values found in the selected folder's metadata file into the entry fields.
         """
-        for i, name in enumerate(self.treatments.keys()):
+        for i, name in enumerate(self.treatments):
             self.rows[i][0].delete(0, tk.END)
             self.rows[i][0].insert(0, name)
-            for j, value in enumerate(self.treatments[name].values(), start=1):
+            for j, value in enumerate(self.treatments[name].values, start=1):
                 self.rows[i][j].delete(0, tk.END)
                 self.rows[i][j].insert(0, str(value))
