@@ -230,7 +230,7 @@ class ConfigFrame(tk.Frame):
         self.sec_1_key_1_label = tk.Label(self, text="Target folder:", font=FONT_M)
         self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
         self.sec_1_value_1_button = tk.Button(self, text="Browse...",font=FONT_M, command=self.select_folder)
-        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y, width=103, height=30)
 
         # Method
         self.sec_1_key_2_label = tk.Label(self, text="Method:", font=FONT_M)
@@ -239,23 +239,23 @@ class ConfigFrame(tk.Frame):
         self.selected_method.set(self.config["input"]["method"])
         self.method_options: list[str] = ["baseline", "previous", "derivative"]
         self.sec_1_value_2_menu = tk.OptionMenu(self, self.selected_method, *self.method_options)
-        self.sec_1_value_2_menu.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y, width=120)
+        self.sec_1_value_2_menu.place(x=BASE_X + EDITOR_PADDING_X - 1, y=SECTION_1_BASE_Y + 2 * PADDING_Y, width=105, height=30)
 
         # SD multiplier
         self.sec_1_key_3_label = tk.Label(self, text="SD multiplier:", font=FONT_M)
         self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
-        self.sec_1_value_3_box = tk.Text(self, width=10, height=1, font=FONT_M)
-        self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
-        self.sec_1_value_3_box.delete("1.0", "end")
-        self.sec_1_value_3_box.insert("1.0", self.config["input"]["SD_multiplier"])
+        self.sec_1_value_3_entry = int_entry(self)
+        self.sec_1_value_3_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.sec_1_value_3_entry.delete(0, tk.END)
+        self.sec_1_value_3_entry.insert(0, self.config["input"]["SD_multiplier"])
 
         # Smoothing range
         self.sec_1_key_4_label = tk.Label(self, text="Smoothing range:", font=FONT_M)
         self.sec_1_key_4_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
-        self.sec_1_value_4_box = tk.Text(self, width=10, height=1, font=FONT_M)
-        self.sec_1_value_4_box.delete("1.0", "end")
-        self.sec_1_value_4_box.insert("1.0", self.config["input"]["smoothing_range"])
-        self.sec_1_value_4_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 4 * PADDING_Y)
+        self.sec_1_value_4_entry = int_entry(self)
+        self.sec_1_value_4_entry.delete(0, tk.END)
+        self.sec_1_value_4_entry.insert(0, self.config["input"]["smoothing_range"])
+        self.sec_1_value_4_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
 
         # Output section
         self.sec_2_label = tk.Label(self, text="Output section", font=FONT_L)
@@ -264,18 +264,18 @@ class ConfigFrame(tk.Frame):
         # Report name
         self.sec_2_key_1_label = tk.Label(self, text="Report name:", font=FONT_M)
         self.sec_2_key_1_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
-        self.sec_2_value_1_box = tk.Text(self, width=10, height=1, font=FONT_M)
-        self.sec_2_value_1_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
-        self.sec_2_value_1_box.delete("1.0", "end")
-        self.sec_2_value_1_box.insert("1.0", self.config["output"]["report_name"])
+        self.sec_2_value_1_entry = str_entry(self)
+        self.sec_2_value_1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.sec_2_value_1_entry.delete(0, tk.END)
+        self.sec_2_value_1_entry.insert(0, self.config["output"]["report_name"])
 
         # Summary name
         self.sec_2_key_2_label = tk.Label(self, text="Summary name:", font=FONT_M)
         self.sec_2_key_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-        self.sec_2_value_2_box = tk.Text(self, width=10, height=1, font=FONT_M)
+        self.sec_2_value_2_box = str_entry(self)
         self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-        self.sec_2_value_2_box.delete("1.0", "end")
-        self.sec_2_value_2_box.insert("1.0", self.config["output"]["summary_name"])
+        self.sec_2_value_2_box.delete(0, tk.END)
+        self.sec_2_value_2_box.insert(0, self.config["output"]["summary_name"])
         
         # Save button for config file
         self.save_config_button = tk.Button(self, text="Save", font=FONT_L, command=self.save_config)
@@ -292,13 +292,13 @@ class ConfigFrame(tk.Frame):
         self.config["input"]["target_folder"] = self.target_path.get()
         self.config["input"]["method"] = self.selected_method.get()
         try:
-            self.config["input"]["SD_multiplier"] = int(self.sec_1_value_3_box.get("1.0", "end-1c"))
-            self.config["input"]["smoothing_range"] = int(self.sec_1_value_4_box.get("1.0", "end-1c"))
+            self.config["input"]["SD_multiplier"] = int(self.sec_1_value_3_entry.get())
+            self.config["input"]["smoothing_range"] = int(self.sec_1_value_4_entry.get())
         except ValueError:
             # error message to be implemented
             pass
-        self.config["output"]["report_name"] = self.sec_2_value_1_box.get("1.0", "end-1c")
-        self.config["output"]["summary_name"] = self.sec_2_value_2_box.get("1.0", "end-1c")
+        self.config["output"]["report_name"] = self.sec_2_value_1_entry.get()
+        self.config["output"]["summary_name"] = self.sec_2_value_2_box.get()
 
         with open(Path("./config.toml"), "w") as f:
             toml.dump(self.config, f)
@@ -336,18 +336,18 @@ class MetadataFrame(tk.Frame):
         # Group1
         self.sec_1_key_2_label = tk.Label(self, text="Group 1:", font=FONT_M)
         self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
-        self.sec_1_value_2_box = tk.Text(self, width=15, height=1, font=FONT_M)
-        self.sec_1_value_2_box.delete("1.0", "end")
-        self.sec_1_value_2_box.insert("1.0", self.metadata["conditions"]["group1"])
+        self.sec_1_value_2_box = str_entry(self)
+        self.sec_1_value_2_box.delete(0, tk.END)
+        self.sec_1_value_2_box.insert(0, self.metadata["conditions"]["group1"])
         self.sec_1_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
 
         # Group2
         self.sec_1_key_3_label = tk.Label(self, text="Group 2:", font=FONT_M)
         self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
-        self.sec_1_value_3_box = tk.Text(self, width=15, height=1, font=FONT_M)
+        self.sec_1_value_3_box = str_entry(self)
         self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
-        self.sec_1_value_3_box.delete("1.0", "end")
-        self.sec_1_value_3_box.insert("1.0", self.metadata["conditions"]["group2"])
+        self.sec_1_value_3_box.delete(0, tk.END)
+        self.sec_1_value_3_box.insert(0, self.metadata["conditions"]["group2"])
 
         # Treatment section
         self.sec_2_label = tk.Label(self, text="Treatment section", font=FONT_L)
@@ -382,8 +382,8 @@ class MetadataFrame(tk.Frame):
 
     def save_metadata(self) -> None:
         self.metadata["conditions"]["ratiometric_dye"] = self.sec_1_value_1_button["text"]
-        self.metadata["conditions"]["group1"] = self.sec_1_value_2_box.get("1.0", "end-1c")
-        self.metadata["conditions"]["group2"] = self.sec_1_value_3_box.get("1.0", "end-1c")
+        self.metadata["conditions"]["group1"] = self.sec_1_value_2_box.get()
+        self.metadata["conditions"]["group2"] = self.sec_1_value_3_box.get()
         self.treatment_table.save_values()
         self.metadata["treatments"] = self.treatment_table.treatments
 
