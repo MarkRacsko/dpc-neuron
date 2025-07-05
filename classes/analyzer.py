@@ -56,11 +56,13 @@ class DataAnalyzer:
 
 
     def tabulate_data(self):
+        """Creates a summary file from all available measurement reports.
+        """
         sum_conf = self.config["output"]
         summary_file_name: Path = self.config["input"]["target_folder"] / f"{sum_conf["summary_name"]}.xlsx"
         for subdir in self._subdirs:
             
-            subdir.load_summary()
+            subdir.load_summary_from_report()
             assert isinstance(subdir.report, pd.DataFrame) # will never fail, but Pylance can't see why
             condition: ExperimentalCondition = list(subdir.treatment_col_names)
             subdir_data: ExperimentalData = (subdir.path.name, subdir.report[["cell_type"] + subdir.treatment_col_names].value_counts())

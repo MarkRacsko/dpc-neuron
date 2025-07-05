@@ -26,11 +26,14 @@ BOTTOM_BUTTONS_Y = 220
 BOTTOM_BUTTONS_X = 35
 BOTTOM_BUTTONS_PADDING_X =100
 
+# this defines different screen sizes, resizing is done by a callback funtion that triggers when the value of
+# the StringVar storing the current mode changes.
 DISPLAY_MODES: dict[str, str] = {
     "config": "460x480",
     "metadata": "460x700"
 }
 
+# this is used for selecting what message we want to display when the program is finished its work
 MESSAGES: dict[tuple[int, int, int], str] = {
     (0, 0, 0): "Please select at least one action to perform.",
     (1, 0, 0): "Finished processing data.",
@@ -42,6 +45,7 @@ MESSAGES: dict[tuple[int, int, int], str] = {
     (1, 1, 1): "Finished processing data, tabulating results, and making graphs."
 }
 
+# this is used to create new metadata if the user selects a folder without a metadata.toml file
 METADATA_TEMPLATE = {
     "conditions": {
         "ratiometric_dye": "true",
@@ -126,6 +130,8 @@ class MainWindow:
         self.root.mainloop()
     
     def resize_window(self, *args) -> None:
+        """Called whenever the current_mode StringVar is written to.
+        """
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
 
     def analyze_button_press(self) -> None:
@@ -171,6 +177,9 @@ class MainWindow:
 
 
     def update_counter(self, *args) -> None:
+        """Called whenever the value of the finished_file_counter IntVar is written to (by a SubDir instance, indicating
+         it finished processing a file).
+        """
         self.finished_number_label.config(text=str(self.finished_file_counter.get()))
         self.root.update_idletasks()
 
@@ -188,14 +197,20 @@ class MainWindow:
         Sets the mode (which determines window size) to metadata and changes the editor section's labels, textboxes,
         and buttons appropriately.
         """
-
-
         self.current_mode.set("metadata")
         self.metadata_panel.update_frame()
         self.config_panel.place(x=OFFSCREEN_X)
         self.metadata_panel.place(x=0, y=PANEL_Y)
 
     def analysis_work(self, proc, tab, graph) -> None:
+        """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
+         display the progress indicator.)
+
+        Args:
+            proc (_type_): The value of the "Process" checkbox.
+            tab (_type_): The value of the "Tabulate" checkbox.
+            graph (_type_): The value of the "Make graphs" checkbox.
+        """
         error_list = []
         if proc:
             self.analyzer.process_data(error_list)
@@ -218,6 +233,8 @@ class MainWindow:
 
 
 class ConfigFrame(tk.Frame):
+    """Displayed in Config Editor mode. Will be moved offscreen when the program switches to a different mode.
+    """
     def __init__(self, parent, config: dict[str, dict[str, Any]], save_button_size: int, **kwargs):
         super().__init__(parent, **kwargs)
         self.target_path = tk.StringVar(value="./data")
@@ -282,13 +299,15 @@ class ConfigFrame(tk.Frame):
         self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=SECTION_2_BASE_Y + 10 + 3 * PADDING_Y, width=save_button_size, height=30)
 
     def select_folder(self) -> None:
-        """Called when pressing the button to select the output folder where results will be saved.
+        """Called when pressing the button to select the target folder.
         """
         path = filedialog.askdirectory(title="Select a folfer")
         if path:
             self.target_path.set(path)
 
     def save_config(self) -> None:
+        """Called by the Save button to write the config file to disk.
+        """
         self.config["input"]["target_folder"] = self.target_path.get()
         self.config["input"]["method"] = self.selected_method.get()
         try:
@@ -305,6 +324,8 @@ class ConfigFrame(tk.Frame):
 
 
 class MetadataFrame(tk.Frame):
+    """Displayed in Metadata Editor mode. Will be moved offscreen when the program switches to a different mode.
+    """
     def __init__(self, parent, button_width: int, button_height: int, **kwargs):
         super().__init__(parent, **kwargs)
         self.target_path = tk.StringVar(value="./data")
@@ -362,6 +383,8 @@ class MetadataFrame(tk.Frame):
         self.save_metadata_button.place(x=230, y=SECTION_2_BASE_Y + 40)
 
     def ratiometric_switch(self) -> None:
+        """Toggles what to display on the button for the ratiometric dye value.
+        """
         current_state = self.sec_1_value_1_button["text"]
 
         if current_state == "True":
@@ -370,6 +393,9 @@ class MetadataFrame(tk.Frame):
             self.sec_1_value_1_button.config(text="True")
 
     def select_measurement_folder_and_load_metadata(self) -> None:
+        """Called when the user first selects the Metadata Editor mode, and by its Select Folder button afterwards. If
+        no metadata file is found, sets the metadata template as the metadata.
+        """
         path = filedialog.askdirectory(title="Select measurement folder")
         if path:
             self.selected_folder.set(path)
@@ -381,6 +407,10 @@ class MetadataFrame(tk.Frame):
                 self.metadata = METADATA_TEMPLATE
 
     def save_metadata(self) -> None:
+        """Called by the Save Metadata button. Updates the metadata object with values entered by the user, then
+        validates that these values are correct, displaying an error message if any mistakes are found. If not mistakes
+        are found, it saves the metadata as metadata.toml in the selected folder.
+        """
         self.metadata["conditions"]["ratiometric_dye"] = self.sec_1_value_1_button["text"]
         self.metadata["conditions"]["group1"] = self.sec_1_value_2_box.get()
         self.metadata["conditions"]["group2"] = self.sec_1_value_3_box.get()
@@ -414,6 +444,8 @@ class MetadataFrame(tk.Frame):
 
 
 class TreatmentTable(tk.Frame):
+    """Encapsulates the logic and methods required to display the treatments section correctly.
+    """
     LABEL_ROW_Y = 40
     COL_1_X = 0
     COL_2_X = 120
@@ -439,10 +471,16 @@ class TreatmentTable(tk.Frame):
         self.update_display()
 
     def add_row(self) -> None:
+        """Called by the Add row button.
+        """
         self.rows.append([str_entry(self), int_entry(self), int_entry(self)])
         self.update_display()
 
     def update_display(self) -> None:
+        """Updates the screen so that the correct number of entry boxes are displayed. There's no logic for removing
+        excess boxes, which is why there is no Remove row button. Empty rows are instead handled later when we save the
+        metadata file in MetadataFrame.save_metadata().
+        """
         x_pos = cycle([self.COL_1_X, self.COL_2_X, self.COL_3_X])
         y_pos = 70
         for row in self.rows:
@@ -451,6 +489,8 @@ class TreatmentTable(tk.Frame):
             y_pos += 30
 
     def save_values(self) -> None:
+        """Updates the treatments dictionary with values entered by the user.
+        """
         self.treatments = {}
         for row in self.rows:
             name = row[0].get()
@@ -461,6 +501,8 @@ class TreatmentTable(tk.Frame):
 
 
     def fill_values(self) -> None:
+        """Loads values found in the selected folder's metadata file into the entry fields.
+        """
         for i, name in enumerate(self.treatments.keys()):
             self.rows[i][0].delete(0, tk.END)
             self.rows[i][0].insert(0, name)

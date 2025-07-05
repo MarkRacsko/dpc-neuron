@@ -17,7 +17,8 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
 
     Args:
         array (np.ndarray): The array to be smoothed. Must be 1-dimensional.
-        window_size (int, optional): The average of this many elements will be taken for the smoothing. Defaults to 5, and it should be an odd number.
+        window_size (int, optional): The average of this many elements will be taken for the smoothing. Defaults to 5,
+        and it should be an odd number.
 
     Raises:
         ValueError: If the input array is of the incorrect shape, or the selected window_size is too large or it isn't odd.
@@ -58,29 +59,52 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
 
     return out_array
 
-def baseline_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
-    baseline_means = ratios[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
-    baseline_stdevs = ratios[agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
+def baseline_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
+    """Determines which agonists cells reacted to and measures the response amplitudes. Reaction state is determined by
+    comparing the response amplitude with the mean of the baseline + sd_mult * baseline standard deviation.
+
+    Args:
+        cell_data (np.ndarray): The 2d numpy array representing data from all cells in the given measurement.
+        agonist_slices (dict[str, slice[int]]): A dictionary mapping agonist names to the indices where each agonist was
+        applied.
+        file_result (pd.DataFrame): The DataFrame storing all output for this measurement file.
+        sd_mult (int): Determines by how many standard deviations must a cell's response exceed the baseline mean to be
+        considered positive for any given agonist.
+    """
+    baseline_means = cell_data[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
+    baseline_stdevs = cell_data[agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
     thresholds = baseline_means + sd_mult*baseline_stdevs
     
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        maximums = ratios[time_window].max(axis=1, keepdims=True)
+        maximums = cell_data[time_window].max(axis=1, keepdims=True)
         amplitudes = maximums - baseline_means.flatten()
         reactions = np.where(maximums > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions
         file_result[agonist + "_amp"] = amplitudes
 
-def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
-    baseline_means = ratios[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
-    baseline_stdevs = ratios[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
+def previous_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
+    """Determines which agonists cells reacted to and measures the response amplitudes. Reaction state is determined by
+    comparing the response amplitude with the mean of the last 10 values in the previous agonist's time window + 
+    sd_mult * baseline standard deviation.
+
+    Args:
+        cell_data (np.ndarray): The 2d numpy array representing data from all cells in the given measurement.
+        agonist_slices (dict[str, slice[int]]): A dictionary mapping agonist names to the indices where each agonist was
+        applied.
+        file_result (pd.DataFrame): The DataFrame storing all output for this measurement file.
+        sd_mult (int): Determines by how many standard deviations must a cell's response exceed the mean of the last 10
+        values in the previous agonist's time window to be considered positive for any given agonist.
+    """
+    baseline_means = cell_data[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
+    baseline_stdevs = cell_data[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
 
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        thresholds = ratios[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs.flatten()
-        maximums = ratios[:,time_window].max(axis=1, keepdims=False)
+        thresholds = cell_data[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs.flatten()
+        maximums = cell_data[:,time_window].max(axis=1, keepdims=False)
         amplitudes = maximums - baseline_means.flatten()
         # using amplitudes to determine reactions is wrong because of the baseline substraction
         # (only cells where the max is larger than the threshold by at least the value of the baseline mean would be 
@@ -89,8 +113,20 @@ def previous_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
         file_result[agonist + "_reaction"] = reactions.flatten()
         file_result[agonist + "_amp"] = amplitudes.flatten()
 
-def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
-    derivs = np.gradient(ratios, axis=1)
+def derivate_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, sd_mult: int):
+    """Determines which agonists cells reacted to and measures the response amplitudes. Reaction state is determined by
+    comparing the response amplitude with the mean of the baseline's first derivative + sd_mult * standard deviation of
+    the baseline's first derivative.
+
+    Args:
+        cell_data (np.ndarray): The 2d numpy array representing data from all cells in the given measurement.
+        agonist_slices (dict[str, slice[int]]): A dictionary mapping agonist names to the indices where each agonist was
+        applied.
+        file_result (pd.DataFrame): The DataFrame storing all output for this measurement file.
+        sd_mult (int): Determines by how many standard deviations must a cell's response exceed the mean of the
+        baseline's first derivative to be considered positive for any given agonist.
+    """
+    derivs = np.gradient(cell_data, axis=1)
     baseline_deriv_means = derivs[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
     baseline_deriv_stdevs = derivs[agonist_slices["baseline"]].std(axis=1, mean=baseline_deriv_means, keepdims=True)
     thresholds = baseline_deriv_means + sd_mult*baseline_deriv_stdevs.flatten()
@@ -98,7 +134,7 @@ def derivate_threshold(ratios: np.ndarray, agonist_slices: dict[str, slice[int]]
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        amplitudes = ratios[time_window].max(axis=1, keepdims=True) - baseline_deriv_means.flatten()
+        amplitudes = cell_data[time_window].max(axis=1, keepdims=True) - baseline_deriv_means.flatten()
         maximum_derivs = derivs[time_window].max(axis=1, keepdims=False)
         reactions = np.where(maximum_derivs > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions.flatten()
@@ -136,6 +172,14 @@ def remove_empty_values(treatments: dict[str, dict[str, int | str]]) -> dict[str
     return result
 
 def validate_config(config: dict[str, dict[str, Any]]) -> str:
+    """Checks the values of the config dictionary, called before we save it to disk.
+
+    Args:
+        config (dict[str, dict[str, Any]]): The Python dict representation of our config.toml.
+
+    Returns:
+        str: An error message describing the problems encountered, or an empty string if there are no problems.
+    """
     message: str = "Errors encountered:"
     starting_len = len(message)
     try:
@@ -187,8 +231,19 @@ def validate_config(config: dict[str, dict[str, Any]]) -> str:
         return ""
 
 def validate_treatments(treatments: dict[str, dict[str, int | str]]) -> list[bool]:
+    """Checks values in the treatment dictionary for correctness. Returns a list of booleans that represent which tests
+    were passed and which failed.
+
+    Args:
+        treatments (dict[str, dict[str, int  |  str]]): The treatments section of the metadata file being edited as a
+        Python dict. The int | str type hint is to make the type checker happy, in reality the input will always be str.
+
+    Returns:
+        list[bool]: Booleans representing the success or failure of each test. Is a list because tuples are immutable.
+    """
 
     previous_end: int = 0
+    # we start by assuming that the tests pass, and set a value to False whenever the corresponding test fails
     passed_tests: list[bool] = [True, True, True]
     for agonist in treatments:
         begin = treatments[agonist]["begin"]
@@ -204,12 +259,22 @@ def validate_treatments(treatments: dict[str, dict[str, int | str]]) -> list[boo
                 passed_tests[2] = False
             
             previous_end = end 
-        except ValueError:
-            passed_tests[0] = False
+        except ValueError: # one or both of the values could not be converted to an int
+            passed_tests[0] = False # first (0th) test logically, since the others cannot be carried out if it fails
 
     return passed_tests
 
 def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
+    """Checks the metadata dictionary before we save it to disk, called by the Save Metadata button's command.
+
+    Args:
+        folder (str): The selected folder. Is here to help provide feedback because the editor does not display what
+        folder was selected.
+        metadata (dict[str, dict[str, Any]]): The folder's metadata.toml as a Python dict.
+
+    Returns:
+        str: An error message describing the problems encountered, or an empty string if there are no problems.
+    """
     errors: str = f"Metadata for folder {folder} has the following errors:"
     starting_len: int = len(errors)
     try:

@@ -196,10 +196,22 @@ class SubDir:
             fig.clf()
             print(f"Done with {cell_name}")
 
-    def load_summary(self) -> None:
-            self.report = pd.read_excel(self.report_path, sheet_name="Summary")
+    def load_summary_from_report(self) -> None:
+            self.report = pd.read_excel(self.report_path, sheet_name="Summary", engine="calamine")
 
     def prepare_ratiometric_data(self, file: Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
+        """Reads data from Fura2 measurements, then performs background substraction, smoothing, and photobleaching
+        correction. Saves processed data to a .feather file as well as returning it.
+
+        Args:
+            file (Path): The measurement file's path.
+            smoothing_window (int): The average of this many elements will be taken for the smoothing. Defaults to 5,
+            and it should be an odd number.
+
+        Returns:
+            tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
+            transformed data, transposed (compared to how it was in the input file).
+        """
         # read in 340 and 380 data separately
         F340_data = pd.read_feather(self.cache_path / f"{file.name}.F340.feather")
         F380_data = pd.read_feather(self.cache_path / f"{file.name}.F380.feather")
@@ -235,6 +247,18 @@ class SubDir:
         return cell_cols, ratios
     
     def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
+        """Reads data from measurements non-ratiometric dyes such as Fluo4, then performs background substraction,
+        smoothing, and photobleaching correction. Saves processed data to a .feather file as well as returning it.
+
+        Args:
+            file (Path): The measurement file's path.
+            smoothing_window (int): The average of this many elements will be taken for the smoothing. Defaults to 5,
+            and it should be an odd number.
+
+        Returns:
+            tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
+            transformed data, transposed (compared to how it was in the input file).
+        """
         data = pd.read_feather(self.cache_path / f"{file.name}.Raw.feather")
         cell_cols = [c for c in data.columns if c not in {"Time", "Background"}]
         x_data, bgr, cells = data["Time"].to_numpy(), data["Background"].to_numpy(), data[cell_cols].to_numpy()
@@ -253,11 +277,26 @@ class SubDir:
         self.save_processed_data(file, x_data, cells, cell_cols, coeffs)
         return cell_cols, cells.transpose()
 
-    def update_file_count(self, count):
+    def update_file_count(self, count: IntVar):
+        """Provides feedback to the user when a file is finished processing.
+
+        Args:
+            count (tk.IntVar): The progress tracker shared between all subdir level processor instances.
+        """
         with self._file_count_lock:
             count.set(count.get() + 1)
 
     def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray) -> None:
+        """Saves processed Ca traces and photobleaching correction coefficients to .feather files in the cache.
+
+        Args:
+            file (Path): The measurement file's path.
+            x_data (np.ndarray): The time values.
+            cell_data (np.ndarray): The measurement data after it has been transformed by the relevant data preparation
+            method.
+            col_names (list[str]): The names of columns in the Excel file where cell data is found.
+            coeffs (np.ndarray): The coefficients used for photobleaching correction.
+        """
         col_names = ["Time"] + col_names
         data = np.vstack((x_data.flatten(), cell_data))
         data = np.transpose(data)

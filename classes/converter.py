@@ -3,13 +3,18 @@ import python_calamine as cala
 from pathlib import Path
 
 class Converter:
+    """Serves the purpose of creating a cache from the input measurement files because reading Excel with pandas is
+    painfully slow compared to feather or other binary file formats.
+    """
     def __init__(self, folder: Path, cache_path: Path, report_path: Path) -> None:
         self.folder = folder
-        # generators cannot be iterated over more than once, and this object may need to be
         self.cache_path = cache_path
         self.report_path = report_path
 
     def convert_to_feather(self):
+        """Reads in all Excel files found in this measurement folder and converts each of their sheets into a separate
+        .feather file. Uses calamine because it is a bit faster than openpyxl.
+        """
         measurement_files = [f for f in self.folder.glob("*.xlsx") if f != self.report_path]
 
         for file in measurement_files:
@@ -23,6 +28,8 @@ class Converter:
 
 
     def convert_to_excel(self):
+        """Converts the cached .feather files back into Excel, overwriting the original files.
+        """
 
         cached_files = [f for f in self.cache_path.glob("*.feather")]
         excel_data: dict[str, set[tuple[str, pd.DataFrame]]] = {}
