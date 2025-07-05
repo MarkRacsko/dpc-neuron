@@ -6,7 +6,8 @@ from typing import Any
 from threading import Thread
 from pathlib import Path
 from itertools import cycle
-from functions import int_entry, str_entry, validate_config, validate_treatments, remove_empty_values
+from functions import int_entry, str_entry, remove_empty_values
+from functions.validation import validate_config, validate_treatments
 from .analyzer import DataAnalyzer
 
 FONT_L = ("Arial", 18)

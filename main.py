@@ -2,7 +2,7 @@ import argparse
 import toml
 from pathlib import Path
 from classes import DataAnalyzer
-from functions import validate_config
+from functions.validation import validate_config
 from tkinter import IntVar
 
 
