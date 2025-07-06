@@ -1,7 +1,8 @@
-from ..functions.validation import validate_config, validate_treatments
-from ..functions.validation import validate_metadata
+from functions.toml_handling import dict_to_metadata
+from functions.validation import validate_config, validate_metadata, validate_treatments
 from pathlib import Path
 from typing import Any
+from copy import deepcopy
 
 good_config = {
     "input": {
@@ -16,7 +17,7 @@ good_config = {
     }
 }
 
-good_metadata = {
+good_metadata_dict = {
     "conditions": {
         "ratiometric_dye": "True",
         "group1": "neuron only",
@@ -37,6 +38,8 @@ good_metadata = {
         }
     }
 }
+
+good_metadata = dict_to_metadata(good_metadata_dict)
 
 def test_config_good():
     errors = validate_config(good_config)
@@ -99,46 +102,46 @@ def test_config_bad_summary():
     assert "must be a string" in errors
 
 def test_treatments_good():
-    passed_tests = validate_treatments(good_metadata["treatments"])
+    passed_tests = validate_treatments(good_metadata.treatments)
     assert all(passed_tests)
 
 def test_treatments_begin_not_int():
-    bad_treatments = {k: v for k, v in good_metadata["treatments"].items()}
-    bad_treatments["baseline"]["begin"] = "asdasdasd"
+    bad_treatments = deepcopy(good_metadata.treatments)
+    bad_treatments["baseline"].begin = "asdasdasd"
 
     passed_tests = validate_treatments(bad_treatments)
     assert passed_tests[0] is False
 
 def test_treatments_begin_larger_than_end():
-    bad_treatments = {k: v for k, v in good_metadata["treatments"].items()}
-    bad_treatments["baseline"]["begin"] = 900
+    bad_treatments = deepcopy(good_metadata.treatments)
+    bad_treatments["baseline"].begin = 900
 
     passed_tests = validate_treatments(bad_treatments)
     assert passed_tests[1] is False
 
 def test_treatments_begin_smaller_than_previous_end():
-    bad_treatments = {k: v for k, v in good_metadata["treatments"].items()}
-    bad_treatments["AITC"]["begin"] = 200
+    bad_treatments = deepcopy(good_metadata.treatments)
+    bad_treatments["AITC"].begin = 200
 
     passed_tests = validate_treatments(bad_treatments)
     assert passed_tests[2] is False
 
 def test_metadata_missing_key():
-    bad_metadata: dict[str, Any] = {k: v for k, v in good_metadata.items()}
+    bad_metadata = deepcopy(good_metadata_dict)
     del bad_metadata["conditions"]
 
     errors = validate_metadata("test", bad_metadata)
     assert "section missing" in errors
 
 def test_metadata_bad_ratiometric():
-    bad_metadata: dict[str, Any] = {k: v for k, v in good_metadata.items()}
+    bad_metadata = deepcopy(good_metadata_dict)
     bad_metadata["conditions"]["ratiometric_dye"] = "bad"
 
     errors = validate_metadata("test", bad_metadata)
     assert "ratiometric_dye value incorrect" in errors
 
 def test_metadata_groups_missing():
-    bad_metadata: dict[str, Any] = {k: v for k, v in good_metadata.items()}
+    bad_metadata = deepcopy(good_metadata_dict)
     del bad_metadata["conditions"]["group1"]
 
     errors = validate_metadata("test", bad_metadata)

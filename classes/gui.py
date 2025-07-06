@@ -5,9 +5,9 @@ from tkinter import filedialog
 from threading import Thread
 from pathlib import Path
 from itertools import cycle
-from functions import int_entry, str_entry
-from functions import validate_config, validate_treatments
-from functions import config_to_dict, dict_to_metadata, metadata_to_dict
+from functions.gui_utilities import int_entry, str_entry
+from functions.validation import validate_config, validate_treatments
+from functions.toml_handling import config_to_dict, dict_to_metadata, metadata_to_dict
 from .analyzer import DataAnalyzer
 from .toml_data import Config, Metadata, Treatments
 

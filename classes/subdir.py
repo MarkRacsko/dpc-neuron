@@ -2,12 +2,11 @@ import numpy as np
 import pandas as pd
 import toml
 from pathlib import Path
-from functions import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from matplotlib.figure import Figure
 from typing import Optional
 from threading import Lock
 from tkinter import IntVar
-
+from functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from functions.validation import validate_metadata
 from .converter import Converter
 

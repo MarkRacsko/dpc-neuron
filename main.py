@@ -1,8 +1,8 @@
 import argparse
 import toml
 from pathlib import Path
-from classes import DataAnalyzer
-from functions.validation import validate_config
+from src.classes import DataAnalyzer
+from src.functions import validate_config, validate_data_path, dict_to_config
 from tkinter import IntVar
 
 
@@ -10,11 +10,16 @@ def main():
     try:
         with open("./config.toml", "r") as f:
             config = toml.load(f)
+            errors = validate_config(config)
+            if errors:
+                print(errors)
+                exit()           
+            config = dict_to_config(config)
     except FileNotFoundError:
         print("Config file needed. Should not have deleted or renamed it.")
         exit()
     
-    default_target = config["input"]["target_folder"]
+    default_target = config.input.target_folder
     target_help = "Path to the folder you want to process. Individual measurement results must be in subfolders of this folder, files in the same subfolder will be interpreted as belonging to the same experiment/day."
     r_help = "If set, process (and/or tabulate) every measurment found in the target folder. Defaults to False, in which case measurements that already have a report associated with them are ignored."
     group_help = "The following are mutually exclusive flags that govern the program's behaviour. One must be chosen."
@@ -44,11 +49,13 @@ def main():
     data_path = Path(args.TARGET)    
     # this is so the analyzer object will have access to the target path for saving the tabulated summary
     # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
-    config["input"]["target_folder"] = data_path
+    config.input.target_folder = data_path
 
-    errors = validate_config(config)
+    errors = validate_data_path(data_path)
     if errors:
+        print("Error:")
         print(errors)
+        print("Exiting.")
         exit()
     
     data_analyzer = DataAnalyzer(config, IntVar(), args.repeat)
@@ -58,8 +65,9 @@ def main():
             if error_message:
                 print(error_message)  
     
+    error_list = []
     if processing:
-        error_list = data_analyzer.process_data()
+        data_analyzer.process_data(error_list)
         for error in error_list:
             print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed
     if tabulating:

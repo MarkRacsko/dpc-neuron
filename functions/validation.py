@@ -1,8 +1,8 @@
 from numbers import Rational
 from pathlib import Path
 from typing import Any
-from classes import Treatments
-from functions import dict_to_treatments
+from classes.toml_data import Treatments
+from .toml_handling import dict_to_treatments
 
 
 def validate_config(config: dict[str, dict[str, Any]]) -> str:

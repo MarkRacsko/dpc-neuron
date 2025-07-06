@@ -1,8 +1,8 @@
 import toml
-from classes import MainWindow
 from pathlib import Path
 from tkinter import messagebox
-from functions.validation import validate_config
+from src.classes import MainWindow
+from src.functions import validate_config, dict_to_config
 
 def main():
     config_path = Path("./config.toml")
@@ -16,6 +16,7 @@ def main():
     if errors:
         messagebox.showerror(message=errors)
         exit()
+    config = dict_to_config(config)
     MainWindow(config)
 
 if __name__ == "__main__":

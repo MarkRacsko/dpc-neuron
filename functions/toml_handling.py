@@ -1,5 +1,5 @@
-from classes import Config, Input, Output
-from classes import Metadata, Conditions, Treatments
+from classes.toml_data import Config, Input, Output
+from classes.toml_data import Metadata, Conditions, Treatments
 from dataclasses import asdict
 from typing import Any
 
