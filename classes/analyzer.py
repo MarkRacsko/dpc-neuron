@@ -23,19 +23,23 @@ class DataAnalyzer:
         self.finished_files = finished_files
         self.experiments: dict[ExperimentalCondition, list[ExperimentalData]]
 
-    def create_subdir_instance(self, subdir_path: Path) -> str | None:
+    def create_subdir_instances(self) -> list[str]:
         """Creates a new SubDir object for the given path and appends it to a (private) list.
 
         Args:
             subdir_path (Path): Path to this subdirectory in the target directory we are processing.
             repeat (bool): The --repeat command line flag as a bool.
         """
-        instance = SubDir(subdir_path, self.config.output.report_name)
-        error = instance.preprocessing(self.repeat)
-        self._subdirs.append(instance)
+        errors = []
+        for subdir_path in self.config.input.target_folder.iterdir():
+            if subdir_path.is_dir():
+                instance = SubDir(subdir_path, self.config.output.report_name)
+                error = instance.preprocessing(self.repeat)
+                if error is not None:
+                    errors.append(error)
+                self._subdirs.append(instance)
         
-        if error:
-            return error
+        return errors
 
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.
@@ -84,8 +88,6 @@ class DataAnalyzer:
                 
                 summary.to_excel(writer, sheet_name=sheet_name)
 
-
-        
 
     def graph_data(self):
         """Makes graphs from every measurement in every subdirectory. The graphs will be saved in new folders, each

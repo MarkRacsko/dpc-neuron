@@ -5,7 +5,7 @@ from typing import Any
 
 def dict_to_config(config: dict[str, dict[str, Any]]) -> Config:
     input_section = config["input"]
-    input_obj = Input(input_section["ratiometric_dye"],
+    input_obj = Input(input_section["target_folder"],
                       input_section["method"],
                       input_section["SD_multiplier"],
                       input_section["smoothing_range"])

@@ -55,5 +55,3 @@ Reading Excel files into pandas DataFrames is dreadfully slow, so I've implement
 
 TODO:
 - test install instructions on Windows
-- maybe add config options to change properties (size, color, ...) of the graphs
-- try to get my hands on the Igor macro Thomas wrote to see how he did things -> asked Balázs

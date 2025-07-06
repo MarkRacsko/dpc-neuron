@@ -22,20 +22,23 @@ class SubDir:
         self.treatment_col_names: list[str] = []
         self.treatment_windows: dict[str, slice[int]] = {}
         self.report: Optional[pd.DataFrame] = None
-        self.has_report: bool = False
+        self.need_to_work: bool = True
         self.conditions: dict[str, str]
         self.measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
 
     def preprocessing(self, repeat: bool) -> str | None:
+        if self.report_path.exists() and not repeat:
+            self.need_to_work = False
+
         errors = self.parse_metadata()
         if errors:
+            self.need_to_work = False
             return errors
+        
         if not self.cache_path.exists():
             Path.mkdir(self.cache_path)
             self.converter.convert_to_feather()
 
-        if self.report_path.exists() and not repeat:
-            self.has_report = True
 
 
     def parse_metadata(self) -> str | None:
@@ -61,7 +64,7 @@ class SubDir:
     def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, finished_files: IntVar, error_list: list[str]) -> str | None:
         """This meant to encapsulate everything currently under the if process: block in process_subdir().
         """
-        if self.has_report:
+        if not self.need_to_work:
             return
                 
         output_columns = ["cell_ID", "condition", "cell_type"] + self.treatment_col_names

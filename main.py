@@ -1,8 +1,9 @@
 import argparse
 import toml
 from pathlib import Path
-from src.classes import DataAnalyzer
-from src.functions import validate_config, validate_data_path, dict_to_config
+from classes.analyzer import DataAnalyzer
+from functions.validation import validate_config, validate_data_path
+from functions.toml_handling import dict_to_config
 from tkinter import IntVar
 
 
@@ -58,14 +59,12 @@ def main():
         print("Exiting.")
         exit()
     
-    data_analyzer = DataAnalyzer(config, IntVar(), args.repeat)
-    for subdir_path in data_path.iterdir():
-        if subdir_path.is_dir():        
-            error_message = data_analyzer.create_subdir_instance(subdir_path)
-            if error_message:
-                print(error_message)  
+    data_analyzer = DataAnalyzer(config, IntVar(), args.repeat)      
+    error_list = data_analyzer.create_subdir_instances()
+    for error in error_list:
+        print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed
     
-    error_list = []
+    error_list = [] # reset the errors to be empty
     if processing:
         data_analyzer.process_data(error_list)
         for error in error_list:

@@ -1,8 +1,9 @@
 import toml
 from pathlib import Path
 from tkinter import messagebox
-from src.classes import MainWindow
-from src.functions import validate_config, dict_to_config
+from classes.gui import MainWindow
+from functions.validation import validate_config
+from functions.toml_handling import dict_to_config
 
 def main():
     config_path = Path("./config.toml")

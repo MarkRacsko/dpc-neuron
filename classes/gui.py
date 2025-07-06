@@ -31,6 +31,7 @@ BOTTOM_BUTTONS_PADDING_X =100
 # this defines different screen sizes, resizing is done by a callback funtion that triggers when the value of
 # the StringVar storing the current mode changes.
 DISPLAY_MODES: dict[str, str] = {
+    "analysis": "460x170",
     "config": "460x480",
     "metadata": "460x700"
 }
@@ -143,6 +144,7 @@ class MainWindow:
             return
         if not data_path.is_dir():
             messagebox.showerror(message="Target isn't a folder.")
+            return
 
         method = self.config.input.method
         if method not in ["baseline", "previous", "derivative"]:
@@ -150,21 +152,21 @@ class MainWindow:
             # operations if the user made a mistake and the program would crash anyway
             messagebox.showerror(message="Implemented reaction testing methods are:\n\"baseline\",\n\"previous\", "
             "\nand \"derivative\".\n\nSee README.md")
-            exit()
+            return
         
+        previous_mode = self.current_mode.get()
+        self.current_mode.set("analysis")
         # this is so the analyzer object will have access to the target path for saving the tabulated summary
         # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
         self.config.input.target_folder = data_path
         
         self.analyzer = DataAnalyzer(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
-        for subdir_path in data_path.iterdir():
-            if subdir_path.is_dir():
-                error_message = self.analyzer.create_subdir_instance(subdir_path)
-                if error_message:
-                    messagebox.showerror(error_message)
+        error_list = self.analyzer.create_subdir_instances()
+        for error_message in error_list:
+            messagebox.showerror(message=error_message)
 
         proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
-        worker_thread = Thread(target=self.analysis_work, args=(proc, tab, graph))
+        worker_thread = Thread(target=self.analysis_work, args=(proc, tab, graph, previous_mode))
         worker_thread.start()
 
         self.analyze_button.place(x=OFFSCREEN_X)
@@ -202,7 +204,7 @@ class MainWindow:
         self.config_panel.place(x=OFFSCREEN_X)
         self.metadata_panel.place(x=0, y=PANEL_Y)
 
-    def analysis_work(self, proc, tab, graph) -> None:
+    def analysis_work(self, proc, tab, graph, mode) -> None:
         """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
          display the progress indicator.)
 
@@ -223,6 +225,8 @@ class MainWindow:
 
         messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])
 
+        self.current_mode.set(mode)
+        self.finished_file_counter.set(0)
         self.in_progress_label.place(x=OFFSCREEN_X)
         self.finished_files_label.place(x=OFFSCREEN_X)
         self.finished_number_label.place(x=OFFSCREEN_X)
