@@ -9,6 +9,7 @@ from functions.gui_utilities import int_entry, str_entry
 from functions.validation import validate_config, validate_treatments
 from functions.toml_handling import config_to_dict, dict_to_metadata, metadata_to_dict
 from .analyzer import DataAnalyzer
+from .converter import Converter
 from .toml_data import Config, Metadata, Treatments
 
 FONT_L = ("Arial", 18)
@@ -19,7 +20,9 @@ BASE_X = 20
 BASE_Y = 20
 PADDING_Y = 30
 PADDING_X = 120
-PANEL_Y = 160
+CONVERT_Y = 170
+CONVERT_PADDING_X = 218
+PANEL_Y = 210
 SECTION_1_BASE_Y = 20 #180
 SECTION_2_BASE_Y = 180 #340
 EDITOR_PADDING_X = 200
@@ -31,9 +34,9 @@ BOTTOM_BUTTONS_PADDING_X =100
 # this defines different screen sizes, resizing is done by a callback funtion that triggers when the value of
 # the StringVar storing the current mode changes.
 DISPLAY_MODES: dict[str, str] = {
-    "analysis": "460x170",
-    "config": "460x480",
-    "metadata": "460x700"
+    "analysis": "460x230",
+    "config": "460x540",
+    "metadata": "460x760"
 }
 
 # this is used for selecting what message we want to display when the program is finished its work
@@ -117,6 +120,14 @@ class MainWindow:
         # Metadata button
         self.metadata_button = tk.Button(self.root, width=8, text="Edit\nmetadata", font=FONT_M, command=self.metadata_button_press)
         self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
+
+        # Convert to cache button
+        self.convert_to_button = tk.Button(self.root, text="Convert files to cache", font=FONT_S, command=self.to_cache_button_press)
+        self.convert_to_button.place(x=BASE_X, y=CONVERT_Y, width=190, height=40)
+
+        # Convert back to Excel button
+        self.convert_back_button = tk.Button(self.root, text="Convert back to Excel", font=FONT_S, command=self.to_excel_button_press)
+        self.convert_back_button.place(x=BASE_X + CONVERT_PADDING_X, y=CONVERT_Y, width=190, height=40)
 
         self.root.update_idletasks()
         # Config editor panel
@@ -234,6 +245,44 @@ class MainWindow:
         self.analyze_button.place(x=BASE_X, y=3 * PADDING_Y, width=120, height=60)
         self.config_button.place(x=BASE_X + 1.2 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
         self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
+    
+    def to_cache_button_press(self) -> None:
+        previous_mode = self.current_mode.get()
+        self.current_mode.set("analysis")
+        self.root.update_idletasks()
+        self.conversion("feather")
+        self.current_mode.set(previous_mode)
+
+    def to_excel_button_press(self) -> None:
+        previous_mode = self.current_mode.get()
+        self.current_mode.set("analysis")
+        self.root.update_idletasks()
+        self.conversion("excel")
+        self.current_mode.set(previous_mode)
+
+    def conversion(self, target: str) -> None:
+        assert target in {"feather", "excel"} # should never fail
+        path = self.config.input.target_folder
+        report_name = self.config.output.report_name
+        
+        converters = []
+        for folder in path.iterdir():
+            if folder.is_dir():
+                cache_path = folder / ".cache"
+                report_path = folder / f"{report_name}{folder.name}.xlsx"
+                converters.append(Converter(folder, cache_path, report_path))
+
+        if target == "feather":
+            threads = [Thread(target=conv.convert_to_feather) for conv in converters]
+        else:
+            threads = [Thread(target=conv.convert_to_excel) for conv in converters]
+        
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        
+        messagebox.showinfo(message="Conversion finished!")
 
 
 class ConfigFrame(tk.Frame):
@@ -471,7 +520,7 @@ class TreatmentTable(tk.Frame):
         self.end_label.place(x=self.COL_3_X, y=self.LABEL_ROW_Y)
         self.rows: list[list[tk.Entry]] = []
         
-        for _ in range(max(self.treatments.length, 5)):
+        for _ in range(max(len(self.treatments), 5)):
             # we want at least 5 rows
             self.rows.append([str_entry(self), int_entry(self), int_entry(self)])
 

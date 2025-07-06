@@ -1,6 +1,8 @@
-# Data and plots I don't want to track
+# Data and other stuff I don't want to track
 data/
 test-data/
+./purge_cache.py
+./purge_feathers.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -176,4 +178,4 @@ cython_debug/
 .pypirc
 
 # uv stuff
-.python-version
+./.python-version

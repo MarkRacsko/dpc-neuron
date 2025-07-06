@@ -2,10 +2,11 @@ from classes.toml_data import Config, Input, Output
 from classes.toml_data import Metadata, Conditions, Treatments
 from dataclasses import asdict
 from typing import Any
+from pathlib import Path
 
 def dict_to_config(config: dict[str, dict[str, Any]]) -> Config:
     input_section = config["input"]
-    input_obj = Input(input_section["target_folder"],
+    input_obj = Input(Path(input_section["target_folder"]),
                       input_section["method"],
                       input_section["SD_multiplier"],
                       input_section["smoothing_range"])

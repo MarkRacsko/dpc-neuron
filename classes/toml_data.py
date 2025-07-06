@@ -37,8 +37,7 @@ class Treatments:
     def __iter__(self):
         return iter(self.treatment_dict)
     
-    @property
-    def length(self) -> int:
+    def __len__(self) -> int:
         return len(self.treatment_dict)
 
     def __getitem__(self, item: str):
