@@ -26,7 +26,7 @@ class SubDir:
         self.conditions: dict[str, str]
         self.measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
 
-    def preprocessing(self, repeat: bool) -> str | None:
+    def preprocessing(self, repeat: bool, finished_files: IntVar) -> str | None:
         if self.report_path.exists() and not repeat:
             self.need_to_work = False
 
@@ -37,7 +37,7 @@ class SubDir:
         
         if not self.cache_path.exists():
             Path.mkdir(self.cache_path)
-            self.converter.convert_to_feather()
+            self.converter.convert_to_feather(finished_files)
 
 
 

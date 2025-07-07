@@ -34,7 +34,7 @@ class DataAnalyzer:
         for subdir_path in self.config.input.target_folder.iterdir():
             if subdir_path.is_dir():
                 instance = SubDir(subdir_path, self.config.output.report_name)
-                error = instance.preprocessing(self.repeat)
+                error = instance.preprocessing(self.repeat, self.finished_files)
                 if error is not None:
                     errors.append(error)
                 self._subdirs.append(instance)

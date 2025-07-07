@@ -1,16 +1,20 @@
-import tkinter as tk
 import toml
+import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
-from threading import Thread
-from pathlib import Path
+
 from itertools import cycle
-from functions.gui_utilities import int_entry, str_entry
-from functions.validation import validate_config, validate_treatments
-from functions.toml_handling import config_to_dict, dict_to_metadata, metadata_to_dict
+from pathlib import Path
+from shutil import rmtree
+from threading import Thread
+
 from .analyzer import DataAnalyzer
 from .converter import Converter
 from .toml_data import Config, Metadata, Treatments
+
+from functions.gui_utilities import int_entry, str_entry
+from functions.validation import validate_config, validate_treatments
+from functions.toml_handling import config_to_dict, dict_to_metadata, metadata_to_dict
 
 FONT_L = ("Arial", 18)
 FONT_M = ("Arial", 16)
@@ -20,23 +24,24 @@ BASE_X = 20
 BASE_Y = 20
 PADDING_Y = 30
 PADDING_X = 120
-CONVERT_Y = 170
-CONVERT_PADDING_X = 218
-PANEL_Y = 210
-SECTION_1_BASE_Y = 20 #180
-SECTION_2_BASE_Y = 180 #340
+MAIN_BUTTON_Y = 90
+PANEL_Y = 220
+SECTION_1_BASE_Y = 20
+SECTION_2_BASE_Y = 180
 EDITOR_PADDING_X = 200
 OFFSCREEN_X = 500
 BOTTOM_BUTTONS_Y = 220
 BOTTOM_BUTTONS_X = 35
 BOTTOM_BUTTONS_PADDING_X =100
 
+CACHE_NAME = ".cache"
+
 # this defines different screen sizes, resizing is done by a callback funtion that triggers when the value of
 # the StringVar storing the current mode changes.
 DISPLAY_MODES: dict[str, str] = {
-    "analysis": "460x230",
-    "config": "460x540",
-    "metadata": "460x760"
+    "analysis": "460x180",
+    "config": "460x550",
+    "metadata": "460x770"
 }
 
 # this is used for selecting what message we want to display when the program is finished its work
@@ -77,57 +82,72 @@ class MainWindow:
         self.root.resizable(False, True)
 
         self.analyzer: DataAnalyzer
-
-        # Browse target folder
-        self.target_label = tk.Label(self.root, text="Data folder:", font=FONT_M)
-        self.target_path = tk.StringVar(value="./data")
         
+        self.checkbox_frame = tk.Frame()
+        self.checkbox_frame.place(x=0, y=0, width=460, height=90)
+
         # Processing checkbox
         self.check_p_state = tk.IntVar()
-        self.check_p = tk.Checkbutton(self.root, text="Process", font=FONT_M, variable=self.check_p_state)
+        self.check_p = tk.Checkbutton(self.checkbox_frame, text="Process", font=FONT_M, variable=self.check_p_state)
         self.check_p.place(x=BASE_X, y=BASE_Y)
 
         # Tabulation checkbox
         self.check_t_state = tk.IntVar()
-        self.check_t = tk.Checkbutton(self.root, text="Tabulate", font=FONT_M, variable=self.check_t_state)
+        self.check_t = tk.Checkbutton(self.checkbox_frame, text="Tabulate", font=FONT_M, variable=self.check_t_state)
         self.check_t.place(x=BASE_X, y=BASE_Y + PADDING_Y)
 
         # Graphing checkbox
         self.check_g_state = tk.IntVar(value=0)
-        self.check_g = tk.Checkbutton(self.root, text="Make graphs", font=FONT_M, variable=self.check_g_state)
+        self.check_g = tk.Checkbutton(self.checkbox_frame, text="Make graphs", font=FONT_M, variable=self.check_g_state)
         self.check_g.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y)
 
         # Repeat checkbox
         self.check_r_state = tk.IntVar()
-        self.check_r = tk.Checkbutton(self.root, text="Repeat", font=FONT_M, variable=self.check_r_state)
+        self.check_r = tk.Checkbutton(self.checkbox_frame, text="Repeat", font=FONT_M, variable=self.check_r_state)
         self.check_r.place(x=BASE_X + 2 * PADDING_X, y=BASE_Y + PADDING_Y)
-        
+
         # Progress tracker
-        self.in_progress_label = tk.Label(self.root, text="Analysis in progress...", font=FONT_M)
+        self.tracker_frame = tk.Frame()
+        self.in_progress_label = tk.Label(self.tracker_frame, text="Work in progress...", font=FONT_M)
+        self.in_progress_label.place(x=BASE_X, y=0)
         self.finished_file_counter = tk.IntVar()
         self.finished_file_counter.trace_add("write", self.update_counter)
-        self.finished_files_label = tk.Label(self.root, text="Files finished:", font=FONT_M)
-        self.finished_number_label = tk.Label(self.root, text="0", font=FONT_M)
+        self.finished_files_label = tk.Label(self.tracker_frame, text="Files finished:", font=FONT_M)
+        self.finished_files_label.place(x=BASE_X, y=PADDING_Y)
+        self.finished_number_label = tk.Label(self.tracker_frame, text="0", font=FONT_M)
+        self.finished_number_label.place(x=BASE_X + 140, y=PADDING_Y)
+
+        # Frame for the buttons
+        self.button_frame = tk.Frame()
+        self.button_frame.place(x=BASE_X, y=MAIN_BUTTON_Y)
+        BW = 9 # button width in screen units
+        BH = 2 # button height in screen units
+
+        def main_button(**kwargs): return tk.Button(self.button_frame, width=BW, height=BH, font=FONT_M, **kwargs)
 
         # Analyze button
-        self.analyze_button = tk.Button(self.root, width=8, text="Analyze", font=FONT_L, command=self.analyze_button_press)
-        self.analyze_button.place(x=BASE_X, y=3 * PADDING_Y, width=120, height=60)
+        self.analyze_button = main_button(text="Analyze", command=self.analyze_button_press)
+        self.analyze_button.grid(row=0, column=0, sticky="news")
 
         # Config button
-        self.config_button = tk.Button(self.root, width=8, text="Edit\nconfig", font=FONT_M, command=self.config_button_press)
-        self.config_button.place(x=BASE_X + 1.2 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
+        self.config_button = main_button(text="Edit\nconfig", command=self.config_button_press)
+        self.config_button.grid(row=0, column=1, sticky="news")
 
         # Metadata button
-        self.metadata_button = tk.Button(self.root, width=8, text="Edit\nmetadata", font=FONT_M, command=self.metadata_button_press)
-        self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
+        self.metadata_button = main_button(text="Edit\nmetadata", command=self.metadata_button_press)
+        self.metadata_button.grid(row=0, column=2, sticky="news")
 
         # Convert to cache button
-        self.convert_to_button = tk.Button(self.root, text="Convert files to cache", font=FONT_S, command=self.to_cache_button_press)
-        self.convert_to_button.place(x=BASE_X, y=CONVERT_Y, width=190, height=40)
+        self.convert_to_button = main_button(text="Convert\nto cache", command=self.to_cache_button_press)
+        self.convert_to_button.grid(row=1, column=0, sticky="news")
 
         # Convert back to Excel button
-        self.convert_back_button = tk.Button(self.root, text="Convert back to Excel", font=FONT_S, command=self.to_excel_button_press)
-        self.convert_back_button.place(x=BASE_X + CONVERT_PADDING_X, y=CONVERT_Y, width=190, height=40)
+        self.convert_back_button = main_button(text="Convert\nto Excel", command=self.to_excel_button_press)
+        self.convert_back_button.grid(row=1, column=1, sticky="news")
+
+        # Delete cache button
+        self.delete_cache_button = main_button(text="Empty\ncache", command=self.delete_cache_button_press)
+        self.delete_cache_button.grid(row=1, column=2, sticky="news")
 
         self.root.update_idletasks()
         # Config editor panel
@@ -149,7 +169,7 @@ class MainWindow:
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
 
     def analyze_button_press(self) -> None:
-        data_path = Path(self.target_path.get())
+        data_path = self.config.input.target_folder
         if not data_path.exists():
             messagebox.showerror(message="Target folder not found.")
             return
@@ -165,8 +185,7 @@ class MainWindow:
             "\nand \"derivative\".\n\nSee README.md")
             return
         
-        previous_mode = self.current_mode.get()
-        self.current_mode.set("analysis")
+
         # this is so the analyzer object will have access to the target path for saving the tabulated summary
         # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
         self.config.input.target_folder = data_path
@@ -177,17 +196,8 @@ class MainWindow:
             messagebox.showerror(message=error_message)
 
         proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
-        worker_thread = Thread(target=self.analysis_work, args=(proc, tab, graph, previous_mode))
+        worker_thread = Thread(target=self.analysis_work, args=(proc, tab, graph))
         worker_thread.start()
-
-        self.analyze_button.place(x=OFFSCREEN_X)
-        self.config_button.place(x=OFFSCREEN_X)
-        self.metadata_button.place(x=OFFSCREEN_X)
-
-        self.in_progress_label.place(x=BASE_X, y=3 * PADDING_Y)
-        self.finished_files_label.place(x=BASE_X, y=4 * PADDING_Y)
-        self.finished_number_label.place(x=BASE_X + 140, y=4 * PADDING_Y)
-
 
     def update_counter(self, *args) -> None:
         """Called whenever the value of the finished_file_counter IntVar is written to (by a SubDir instance, indicating
@@ -215,7 +225,7 @@ class MainWindow:
         self.config_panel.place(x=OFFSCREEN_X)
         self.metadata_panel.place(x=0, y=PANEL_Y)
 
-    def analysis_work(self, proc, tab, graph, mode) -> None:
+    def analysis_work(self, proc, tab, graph) -> None:
         """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
          display the progress indicator.)
 
@@ -224,6 +234,11 @@ class MainWindow:
             tab (_type_): The value of the "Tabulate" checkbox.
             graph (_type_): The value of the "Make graphs" checkbox.
         """
+        previous_mode = self.current_mode.get()
+        self.current_mode.set("analysis")
+        self.button_frame.place(x=OFFSCREEN_X)
+        self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y)
+
         error_list = []
         if proc:
             self.analyzer.process_data(error_list)
@@ -236,53 +251,73 @@ class MainWindow:
 
         messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])
 
-        self.current_mode.set(mode)
+        self.current_mode.set(previous_mode)
+        self.tracker_frame.place(x=OFFSCREEN_X)
+        self.button_frame.place(x=BASE_X, y=MAIN_BUTTON_Y)
         self.finished_file_counter.set(0)
-        self.in_progress_label.place(x=OFFSCREEN_X)
-        self.finished_files_label.place(x=OFFSCREEN_X)
-        self.finished_number_label.place(x=OFFSCREEN_X)
-
-        self.analyze_button.place(x=BASE_X, y=3 * PADDING_Y, width=120, height=60)
-        self.config_button.place(x=BASE_X + 1.2 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
-        self.metadata_button.place(x=BASE_X + 2.4 * PADDING_X, y=3 * PADDING_Y, width=120, height=60)
     
     def to_cache_button_press(self) -> None:
-        previous_mode = self.current_mode.get()
-        self.current_mode.set("analysis")
-        self.root.update_idletasks()
-        self.conversion("feather")
-        self.current_mode.set(previous_mode)
+        """Changes the window size to indicate work is in progress then calls the conversion method to convert all
+        measurement files from Excel to the cached format.
+        """
+        worker_thread = Thread(target=self.conversion, args=("feather",))
+        worker_thread.start()
 
     def to_excel_button_press(self) -> None:
-        previous_mode = self.current_mode.get()
-        self.current_mode.set("analysis")
-        self.root.update_idletasks()
-        self.conversion("excel")
-        self.current_mode.set(previous_mode)
+        """Changes the window size to indicate work is in progress then calls the conversion method to convert all
+       cached files from the cached format back to Excel.
+        """
+        worker_thread = Thread(target=self.conversion, args=("excel",))
+        worker_thread.start()
 
     def conversion(self, target: str) -> None:
+        """Performs the actual conversion work between Excel files and the cached .feather format.
+
+        Args:
+            target (str): "feather" or "excel", indicates the direction of conversion
+        """
         assert target in {"feather", "excel"} # should never fail
+        previous_mode = self.current_mode.get()
+        self.current_mode.set("analysis")
+        self.button_frame.place(x=OFFSCREEN_X)
+        self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y, width=460, height=230)
+
         path = self.config.input.target_folder
         report_name = self.config.output.report_name
         
         converters = []
         for folder in path.iterdir():
             if folder.is_dir():
-                cache_path = folder / ".cache"
+                cache_path = folder / CACHE_NAME
                 report_path = folder / f"{report_name}{folder.name}.xlsx"
                 converters.append(Converter(folder, cache_path, report_path))
 
         if target == "feather":
-            threads = [Thread(target=conv.convert_to_feather) for conv in converters]
+            threads = [Thread(target=conv.convert_to_feather, args=(self.finished_file_counter,)) for conv in converters]
         else:
-            threads = [Thread(target=conv.convert_to_excel) for conv in converters]
+            threads = [Thread(target=conv.convert_to_excel, args=(self.finished_file_counter,)) for conv in converters]
         
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        
+
         messagebox.showinfo(message="Conversion finished!")
+
+        self.current_mode.set(previous_mode)
+        self.button_frame.place(x=BASE_X, y=MAIN_BUTTON_Y)
+        self.tracker_frame.place(x=OFFSCREEN_X)
+        self.finished_file_counter.set(0)
+
+    
+    def delete_cache_button_press(self) -> None:
+        target = self.config.input.target_folder
+        for folder in target.iterdir():
+            if folder.is_dir():
+                cache_path = folder / CACHE_NAME
+                if cache_path.exists():
+                    rmtree(cache_path)
+        messagebox.showinfo(message="All cached files removed!")
 
 
 class ConfigFrame(tk.Frame):

@@ -1,10 +1,13 @@
 import pandas as pd
 import python_calamine as cala
 from pathlib import Path
+from threading import Lock
+from tkinter import IntVar
 
 NAME_SHEET_SEP: str = " SHEET:"
 
 class Converter:
+    _lock = Lock()
     """Serves the purpose of creating a cache from the input measurement files because reading Excel with pandas is
     painfully slow compared to feather or other binary file formats.
     """
@@ -13,7 +16,7 @@ class Converter:
         self.cache_path = cache_path.absolute()
         self.report_path = report_path.absolute()
 
-    def convert_to_feather(self):
+    def convert_to_feather(self, finished_files: IntVar):
         """Reads in all Excel files found in this measurement folder and converts each of their sheets into a separate
         .feather file. Uses calamine because it is a bit faster than openpyxl.
         """
@@ -30,8 +33,11 @@ class Converter:
 
                 df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.feather")
 
+            with self._lock:
+                finished_files.set(finished_files.get() + 1)
 
-    def convert_to_excel(self):
+
+    def convert_to_excel(self, finished_files: IntVar):
         """Converts the cached .feather files back into Excel, overwriting the original files.
         """
         if not self.cache_path.exists:
@@ -58,3 +64,6 @@ class Converter:
             with pd.ExcelWriter(self.folder / file_name) as writer:
                 for sheet, df in contents:
                     df.to_excel(writer, sheet_name=sheet, index=False)
+            
+            with self._lock:
+                finished_files.set(finished_files.get() + 1)
