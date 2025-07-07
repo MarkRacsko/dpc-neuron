@@ -28,7 +28,7 @@ class Converter:
                 headers, numbers = content[0], content[1:]
                 df = pd.DataFrame(data=numbers, columns=headers)
 
-                df.to_feather(self.cache_path / f"{file.stem}{NAME_SHEET_SEP}{sheet}.feather")
+                df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.feather")
 
 
     def convert_to_excel(self):
@@ -37,20 +37,24 @@ class Converter:
         if not self.cache_path.exists:
             return
 
-        cached_files = [Path(f.name) for f in self.cache_path.glob("*.feather")]
+        cached_files = [f for f in self.cache_path.glob("*.feather")]
         excel_data: dict[str, list[tuple[str, pd.DataFrame]]] = {}
+        # filenames mapped to lists of their content as (sheetname, data) pairs
         
         for file in cached_files:
-            file_name, sheet_name = file.stem.split(sep=NAME_SHEET_SEP)
-            file_data = pd.read_feather(self.cache_path / file)
+            file_name = file.name
+            file_data = pd.read_feather(self.cache_path / file_name)
+            
+            file_name, sheet_name = file_name.split(sep=NAME_SHEET_SEP)
+            sheet_name = sheet_name.rstrip(".feather")
 
-            if file.name in excel_data:
-                excel_data[file.name].append((sheet_name, file_data))
+            if file_name in excel_data:
+                excel_data[file_name].append((sheet_name, file_data))
             else:
-                excel_data[file.name] = [(sheet_name, file_data)]
+                excel_data[file_name] = [(sheet_name, file_data)]
 
         for file_name, contents in excel_data.items():
-            file_name, _ = file_name.split(sep=NAME_SHEET_SEP)
-            with pd.ExcelWriter(self.folder / f"{file_name}.xlsx") as writer:
+            contents = sorted(contents, key=lambda x: x[0])
+            with pd.ExcelWriter(self.folder / file_name) as writer:
                 for sheet, df in contents:
                     df.to_excel(writer, sheet_name=sheet, index=False)
