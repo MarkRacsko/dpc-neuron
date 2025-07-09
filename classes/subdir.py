@@ -8,7 +8,7 @@ from threading import Lock
 from tkinter import IntVar
 from functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from functions.validation import validate_metadata
-from .converter import Converter
+from .converter import Converter, NAME_SHEET_SEP
 
 class SubDir:
     _error_lock = Lock()
@@ -217,8 +217,8 @@ class SubDir:
             transformed data, transposed (compared to how it was in the input file).
         """
         # read in 340 and 380 data separately
-        F340_data = pd.read_feather(self.cache_path / f"{file.name}.F340.feather")
-        F380_data = pd.read_feather(self.cache_path / f"{file.name}.F380.feather")
+        F340_data = pd.read_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}F340.feather")
+        F380_data = pd.read_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}F380.feather")
         cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
         
         # split the data
@@ -263,7 +263,7 @@ class SubDir:
             tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
             transformed data, transposed (compared to how it was in the input file).
         """
-        data = pd.read_feather(self.cache_path / f"{file.name}.Raw.feather")
+        data = pd.read_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Raw.feather")
         cell_cols = [c for c in data.columns if c not in {"Time", "Background"}]
         x_data, bgr, cells = data["Time"].to_numpy(), data["Background"].to_numpy(), data[cell_cols].to_numpy()
         x_data, bgr = x_data[:, np.newaxis], bgr[:, np.newaxis]
@@ -311,7 +311,7 @@ class SubDir:
             sheet_name: str = "Processed"
         
         df = pd.DataFrame(data, columns=col_names)
-        df.to_feather(self.cache_path / f"{file.name}.{sheet_name}.feather")
+        df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet_name}.feather")
 
         if ratio:
             col_names[0] = "Wavelength"
@@ -319,10 +319,10 @@ class SubDir:
             first_col = first_col[:, np.newaxis]
             coeffs = np.hstack((first_col, coeffs))
             df = pd.DataFrame(coeffs, columns=col_names)
-            df.to_feather(self.cache_path / f"{file.name}.Coeffs.feather")
+            df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
         else:
             df = pd.DataFrame(coeffs, columns=col_names)
-            df.to_feather(self.cache_path / f"{file.name}.Coeffs.feather")
+            df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
         # If we're not using a ratiometric dye, we only have one set of coefficients, but if we are using Fura, then we
         # have two, and we should save which is which.
 
