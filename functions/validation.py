@@ -2,7 +2,6 @@ from numbers import Rational
 from pathlib import Path
 from typing import Any
 from classes.toml_data import Treatments
-from .toml_handling import dict_to_treatments
 
 
 def validate_config(config: dict[str, dict[str, Any]]) -> str:
@@ -133,7 +132,7 @@ def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
     except KeyError:
         errors += "\nConditions section missing or incorrectly named."
     try:
-        treatments = dict_to_treatments(metadata["treatments"])
+        treatments = Treatments(metadata["treatments"])
         treatment_errors = validate_treatments(treatments)
         if not treatment_errors[0]:
             errors += "\nAll begin and end values must be integers."

@@ -14,7 +14,6 @@ from .toml_data import Config, Metadata, Treatments
 
 from functions.gui_utilities import int_entry, str_entry
 from functions.validation import validate_config, validate_treatments
-from functions.toml_handling import config_to_dict, dict_to_metadata, metadata_to_dict
 
 FONT_L = ("Arial", 18)
 FONT_M = ("Arial", 16)
@@ -24,15 +23,13 @@ BASE_X = 20
 BASE_Y = 20
 PADDING_Y = 30
 PADDING_X = 120
-MAIN_BUTTON_Y = 90
-PANEL_Y = 220
-SECTION_1_BASE_Y = 20
-SECTION_2_BASE_Y = 180
-EDITOR_PADDING_X = 200
-OFFSCREEN_X = 500
-BOTTOM_BUTTONS_Y = 220
-BOTTOM_BUTTONS_X = 35
-BOTTOM_BUTTONS_PADDING_X =100
+MAIN_BUTTON_Y = 90 # used for placing the frame containing the main 6 buttons and alternatively the progress tracker
+PANEL_Y = 220 # used for placing the config and metadata editor panels
+SECTION_1_BASE_Y = 20 # first section of the editor panel
+SECTION_2_BASE_Y = 180 # second second of the editor panel
+EDITOR_PADDING_X = 200 # BASE_X + this is the x coord for items in the second column of the editor panels
+OFFSCREEN_X = 500 # this is used to move unwanted items offscreen
+BOTTOM_TABLE_Y = 220 # y coord for the treatment table on the metadata panel
 
 CACHE_NAME = ".cache"
 
@@ -44,7 +41,7 @@ DISPLAY_MODES: dict[str, str] = {
     "metadata": "460x770"
 }
 
-# this is used for selecting what message we want to display when the program is finished its work
+# this is used for selecting what message we want to display when the program has finished its work
 MESSAGES: dict[tuple[int, int, int], str] = {
     (0, 0, 0): "Please select at least one action to perform.",
     (1, 0, 0): "Finished processing data.",
@@ -108,12 +105,16 @@ class MainWindow:
 
         # Progress tracker
         self.tracker_frame = tk.Frame()
+
         self.in_progress_label = tk.Label(self.tracker_frame, text="Work in progress...", font=FONT_M)
         self.in_progress_label.place(x=BASE_X, y=0)
+
         self.finished_file_counter = tk.IntVar()
         self.finished_file_counter.trace_add("write", self.update_counter)
+
         self.finished_files_label = tk.Label(self.tracker_frame, text="Files finished:", font=FONT_M)
         self.finished_files_label.place(x=BASE_X, y=PADDING_Y)
+
         self.finished_number_label = tk.Label(self.tracker_frame, text="0", font=FONT_M)
         self.finished_number_label.place(x=BASE_X + 140, y=PADDING_Y)
 
@@ -125,27 +126,27 @@ class MainWindow:
 
         def main_button(**kwargs): return tk.Button(self.button_frame, width=BW, height=BH, font=FONT_M, **kwargs)
 
-        # Analyze button
+        ## Analyze button
         self.analyze_button = main_button(text="Analyze", command=self.analyze_button_press)
         self.analyze_button.grid(row=0, column=0, sticky="news")
 
-        # Config button
+        ## Config button
         self.config_button = main_button(text="Edit\nconfig", command=self.config_button_press)
         self.config_button.grid(row=0, column=1, sticky="news")
 
-        # Metadata button
+        ## Metadata button
         self.metadata_button = main_button(text="Edit\nmetadata", command=self.metadata_button_press)
         self.metadata_button.grid(row=0, column=2, sticky="news")
 
-        # Convert to cache button
+        ## Convert to cache button
         self.convert_to_button = main_button(text="Convert\nto cache", command=self.to_cache_button_press)
         self.convert_to_button.grid(row=1, column=0, sticky="news")
 
-        # Convert back to Excel button
+        ## Convert back to Excel button
         self.convert_back_button = main_button(text="Convert\nto Excel", command=self.to_excel_button_press)
         self.convert_back_button.grid(row=1, column=1, sticky="news")
 
-        # Delete cache button
+        ## Delete cache button
         self.delete_cache_button = main_button(text="Empty\ncache", command=self.delete_cache_button_press)
         self.delete_cache_button.grid(row=1, column=2, sticky="news")
 
@@ -175,7 +176,7 @@ class MainWindow:
             return
         if not data_path.is_dir():
             messagebox.showerror(message="Target isn't a folder.")
-            return
+            return # this error should happen in the GUI version but I will leave this here just in case
 
         method = self.config.input.method
         if method not in ["baseline", "previous", "derivative"]:
@@ -185,30 +186,25 @@ class MainWindow:
             "\nand \"derivative\".\n\nSee README.md")
             return
         
-
-        # this is so the analyzer object will have access to the target path for saving the tabulated summary
-        # (this value is not the same as what the config started with if the user provided the TARGET command line arg)
-        self.config.input.target_folder = data_path
-        
         self.analyzer = DataAnalyzer(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
         error_list = self.analyzer.create_subdir_instances()
-        for error_message in error_list:
+        for error_message in error_list: # if there was no error, nothing happens
             messagebox.showerror(message=error_message)
 
         proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
         worker_thread = Thread(target=self.analysis_work, args=(proc, tab, graph))
         worker_thread.start()
+        # the processing work is put in a new thread so that the progress counter can be updated and displayed
 
     def update_counter(self, *args) -> None:
         """Called whenever the value of the finished_file_counter IntVar is written to (by a SubDir instance, indicating
          it finished processing a file).
         """
         self.finished_number_label.config(text=str(self.finished_file_counter.get()))
-        self.root.update_idletasks()
 
     def config_button_press(self) -> None:
         """
-        Sets the mode (which determines window size) to config and changes the editor section's labels, textboxes,
+        Sets the mode (which determines window size) to config and changes the editor section's labels, entry fields,
         and buttons appropriately.
         """
         self.current_mode.set("config")
@@ -217,7 +213,7 @@ class MainWindow:
 
     def metadata_button_press(self) -> None:
         """
-        Sets the mode (which determines window size) to metadata and changes the editor section's labels, textboxes,
+        Sets the mode (which determines window size) to metadata and changes the editor section's labels, entry fields,
         and buttons appropriately.
         """
         self.current_mode.set("metadata")
@@ -225,14 +221,14 @@ class MainWindow:
         self.config_panel.place(x=OFFSCREEN_X)
         self.metadata_panel.place(x=0, y=PANEL_Y)
 
-    def analysis_work(self, proc, tab, graph) -> None:
+    def analysis_work(self, proc: int, tab: int, graph: int) -> None:
         """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
          display the progress indicator.)
 
         Args:
-            proc (_type_): The value of the "Process" checkbox.
-            tab (_type_): The value of the "Tabulate" checkbox.
-            graph (_type_): The value of the "Make graphs" checkbox.
+            proc (int): The value of the "Process" checkbox. (1 or 0)
+            tab (int): The value of the "Tabulate" checkbox. (1 or 0)
+            graph (int): The value of the "Make graphs" checkbox. (1 or 0)
         """
         previous_mode = self.current_mode.get()
         self.current_mode.set("analysis")
@@ -261,14 +257,14 @@ class MainWindow:
         measurement files from Excel to the cached format.
         """
         worker_thread = Thread(target=self.conversion, args=("feather",))
-        worker_thread.start()
+        worker_thread.start() # conversion is in a new thread so we can update and display the progress tracker
 
     def to_excel_button_press(self) -> None:
         """Changes the window size to indicate work is in progress then calls the conversion method to convert all
        cached files from the cached format back to Excel.
         """
         worker_thread = Thread(target=self.conversion, args=("excel",))
-        worker_thread.start()
+        worker_thread.start() # conversion is in a new thread so we can update and display the progress tracker
 
     def conversion(self, target: str) -> None:
         """Performs the actual conversion work between Excel files and the cached .feather format.
@@ -325,62 +321,62 @@ class ConfigFrame(tk.Frame):
     """
     def __init__(self, parent, config: Config, save_button_size: int, **kwargs):
         super().__init__(parent, **kwargs)
-        self.target_path = tk.StringVar(value="./data")
         self.config = config
+
         # Input section
-        self.sec_1_label = tk.Label(self, text="Input section", font=FONT_L)
-        self.sec_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
+        self.input_label = tk.Label(self, text="Input section", font=FONT_L)
+        self.input_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
 
-        # Target folder selection
-        self.sec_1_key_1_label = tk.Label(self, text="Target folder:", font=FONT_M)
-        self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
-        self.sec_1_value_1_button = tk.Button(self, text="Browse...",font=FONT_M, command=self.select_folder)
-        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y, width=103, height=30)
+        ## Target folder selection
+        self.target_folder_label = tk.Label(self, text="Target folder:", font=FONT_M)
+        self.target_folder_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.target_folder_button = tk.Button(self, text="Browse...",font=FONT_M, command=self.select_folder)
+        self.target_folder_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y, width=103, height=30)
 
-        # Method
-        self.sec_1_key_2_label = tk.Label(self, text="Method:", font=FONT_M)
-        self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
+        ## Method
+        self.method_label = tk.Label(self, text="Method:", font=FONT_M)
+        self.method_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
         self.selected_method = tk.StringVar()
         self.selected_method.set(self.config.input.method)
         self.method_options: list[str] = ["baseline", "previous", "derivative"]
-        self.sec_1_value_2_menu = tk.OptionMenu(self, self.selected_method, *self.method_options)
-        self.sec_1_value_2_menu.place(x=BASE_X + EDITOR_PADDING_X - 1, y=SECTION_1_BASE_Y + 2 * PADDING_Y, width=105, height=30)
+        self.method_menu = tk.OptionMenu(self, self.selected_method, *self.method_options)
+        self.method_menu.place(x=BASE_X + EDITOR_PADDING_X - 1, y=SECTION_1_BASE_Y + 2 * PADDING_Y, width=105, height=30)
 
-        # SD multiplier
-        self.sec_1_key_3_label = tk.Label(self, text="SD multiplier:", font=FONT_M)
-        self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
-        self.sec_1_value_3_entry = int_entry(self)
-        self.sec_1_value_3_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
-        self.sec_1_value_3_entry.delete(0, tk.END)
-        self.sec_1_value_3_entry.insert(0, str(self.config.input.SD_multiplier))
+        ## SD multiplier
+        self.SD_multiplier_label = tk.Label(self, text="SD multiplier:", font=FONT_M)
+        self.SD_multiplier_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.SD_multiplier_entry = int_entry(self)
+        self.SD_multiplier_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.SD_multiplier_entry.delete(0, tk.END)
+        self.SD_multiplier_entry.insert(0, str(self.config.input.SD_multiplier))
 
-        # Smoothing range
-        self.sec_1_key_4_label = tk.Label(self, text="Smoothing range:", font=FONT_M)
-        self.sec_1_key_4_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
-        self.sec_1_value_4_entry = int_entry(self)
-        self.sec_1_value_4_entry.delete(0, tk.END)
-        self.sec_1_value_4_entry.insert(0, str(self.config.input.smoothing_range))
-        self.sec_1_value_4_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
+        ## Smoothing range
+        self.smoothing_label = tk.Label(self, text="Smoothing range:", font=FONT_M)
+        self.smoothing_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
+        self.smoothing_entry = int_entry(self)
+        self.smoothing_entry.delete(0, tk.END)
+        self.smoothing_entry.insert(0, str(self.config.input.smoothing_range))
+        self.smoothing_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
 
         # Output section
-        self.sec_2_label = tk.Label(self, text="Output section", font=FONT_L)
-        self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
+        self.output_label = tk.Label(self, text="Output section", font=FONT_L)
+        self.output_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
 
-        # Report name
-        self.sec_2_key_1_label = tk.Label(self, text="Report name:", font=FONT_M)
-        self.sec_2_key_1_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
-        self.sec_2_value_1_entry = str_entry(self)
-        self.sec_2_value_1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
-        self.sec_2_value_1_entry.delete(0, tk.END)
-        self.sec_2_value_1_entry.insert(0, self.config.output.report_name)
+        ## Report name
+        self.report_label = tk.Label(self, text="Report name:", font=FONT_M)
+        self.report_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.report_entry = str_entry(self)
+        self.report_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.report_entry.delete(0, tk.END)
+        self.report_entry.insert(0, self.config.output.report_name)
 
-        # Summary name
-        self.sec_2_key_2_label = tk.Label(self, text="Summary name:", font=FONT_M)
-        self.sec_2_key_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-        self.sec_2_value_2_box = str_entry(self)
-        self.sec_2_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
-        self.sec_2_value_2_box.delete(0, tk.END)
-        self.sec_2_value_2_box.insert(0, self.config.output.summary_name)
+        ## Summary name
+        self.summary_label = tk.Label(self, text="Summary name:", font=FONT_M)
+        self.summary_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.summary_entry = str_entry(self)
+        self.summary_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.summary_entry.delete(0, tk.END)
+        self.summary_entry.insert(0, self.config.output.summary_name)
         
         # Save button for config file
         self.save_config_button = tk.Button(self, text="Save", font=FONT_L, command=self.save_config)
@@ -391,19 +387,19 @@ class ConfigFrame(tk.Frame):
         """
         path = filedialog.askdirectory(title="Select a folfer")
         if path:
-            self.target_path.set(path)
+            self.config.input.target_folder = Path(path)
 
     def save_config(self) -> None:
         """Called by the Save button to write the config file to disk.
         """
-        self.config.input.target_folder = Path(self.target_path.get())
+        # self.config.input.target_folder already had its value set by select_folder, or it wasn't changed
         self.config.input.method = self.selected_method.get()
-        self.config.input.SD_multiplier = int(self.sec_1_value_3_entry.get())
-        self.config.input.smoothing_range = int(self.sec_1_value_4_entry.get())
-        self.config.output.report_name = self.sec_2_value_1_entry.get()
-        self.config.output.summary_name = self.sec_2_value_2_box.get()
+        self.config.input.SD_multiplier = int(self.SD_multiplier_entry.get())
+        self.config.input.smoothing_range = int(self.smoothing_entry.get())
+        self.config.output.report_name = self.report_entry.get()
+        self.config.output.summary_name = self.summary_entry.get()
 
-        config_as_dict = config_to_dict(self.config)
+        config_as_dict = self.config.to_dict()
         errors = validate_config(config_as_dict)
         if errors:
             messagebox.showerror(errors)
@@ -435,39 +431,38 @@ class MetadataFrame(tk.Frame):
             self.select_measurement_folder_and_load_metadata()
         
         # Conditions section
-        self.sec_1_label = tk.Label(self, text="Conditions section", font=FONT_L)
-        self.sec_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
+        self.conditions_label = tk.Label(self, text="Conditions section", font=FONT_L)
+        self.conditions_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
 
         # Ratiometric dye
-        self.sec_1_key_1_label = tk.Label(self, text="Ratiometric dye:", font=FONT_M)
-        self.sec_1_key_1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
-        self.sec_1_value_1_button = tk.Button(self, text=f"{self.metadata.conditions.ratiometric_dye}", font=FONT_M, command=self.ratiometric_switch)
-        self.sec_1_value_1_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.dye_label = tk.Label(self, text="Ratiometric dye:", font=FONT_M)
+        self.dye_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.dye_button = tk.Button(self, text=f"{self.metadata.conditions.ratiometric_dye}", font=FONT_M, command=self.ratiometric_switch)
+        self.dye_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
 
         # Group1
-        self.sec_1_key_2_label = tk.Label(self, text="Group 1:", font=FONT_M)
-        self.sec_1_key_2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
-        self.sec_1_value_2_box = str_entry(self)
-        self.sec_1_value_2_box.delete(0, tk.END)
-        self.sec_1_value_2_box.insert(0, self.metadata.conditions.group1)
-        self.sec_1_value_2_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
+        self.group1_label = tk.Label(self, text="Group 1:", font=FONT_M)
+        self.group1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.group1_entry = str_entry(self)
+        self.group1_entry.delete(0, tk.END)
+        self.group1_entry.insert(0, self.metadata.conditions.group1)
+        self.group1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
 
         # Group2
-        self.sec_1_key_3_label = tk.Label(self, text="Group 2:", font=FONT_M)
-        self.sec_1_key_3_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
-        self.sec_1_value_3_box = str_entry(self)
-        self.sec_1_value_3_box.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
-        self.sec_1_value_3_box.delete(0, tk.END)
-        self.sec_1_value_3_box.insert(0, self.metadata.conditions.group2)
+        self.group2_label = tk.Label(self, text="Group 2:", font=FONT_M)
+        self.group2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.group2_entry = str_entry(self)
+        self.group2_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
+        self.group2_entry.delete(0, tk.END)
+        self.group2_entry.insert(0, self.metadata.conditions.group2)
 
         # Treatment section
-        self.sec_2_label = tk.Label(self, text="Treatment section", font=FONT_L)
-        self.sec_2_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
+        self.treatment_label = tk.Label(self, text="Treatment section", font=FONT_L)
+        self.treatment_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
 
-        treatments = self.metadata.treatments  
         self.update_idletasks()
-        self.treatment_table = TreatmentTable(self, treatments, width=440, height=490)
-        self.treatment_table.place(x=BASE_X + 40, y=BOTTOM_BUTTONS_Y)
+        self.treatment_table = TreatmentTable(self, self.metadata.treatments, width=440, height=490)
+        self.treatment_table.place(x=BASE_X + 40, y=BOTTOM_TABLE_Y)
         
         self.save_metadata_button = tk.Button(self, text="Save Metadata", font=FONT_M, command=self.save_metadata)
         self.save_metadata_button.place(x=230, y=SECTION_2_BASE_Y + 40)
@@ -475,16 +470,16 @@ class MetadataFrame(tk.Frame):
     def ratiometric_switch(self) -> None:
         """Toggles what to display on the button for the ratiometric dye value.
         """
-        current_state = self.sec_1_value_1_button["text"]
+        current_state = self.dye_button["text"]
 
         if current_state == "True":
-            self.sec_1_value_1_button.config(text="False")
+            self.dye_button.config(text="False")
         else:
-            self.sec_1_value_1_button.config(text="True")
+            self.dye_button.config(text="True")
 
     def select_measurement_folder_and_load_metadata(self) -> None:
         """Called when the user first selects the Metadata Editor mode, and by its Select Folder button afterwards. If
-        no metadata file is found, sets the metadata template as the metadata.
+        no metadata file is found, creates new metadata from the template.
         """
         path = filedialog.askdirectory(title="Select measurement folder")
         if path:
@@ -493,18 +488,18 @@ class MetadataFrame(tk.Frame):
             try:
                 with open(Path(self.selected_folder.get()) / "metadata.toml", "r") as f:
                     metadata = toml.load(f)
-                    self.metadata = dict_to_metadata(metadata)
+                    self.metadata = Metadata(metadata)
             except FileNotFoundError:
-                self.metadata = dict_to_metadata(METADATA_TEMPLATE)
+                self.metadata = Metadata(METADATA_TEMPLATE) # there isn't a metadata file, we'll be making a new one
 
     def save_metadata(self) -> None:
         """Called by the Save Metadata button. Updates the metadata object with values entered by the user, then
         validates that these values are correct, displaying an error message if any mistakes are found. If not mistakes
         are found, it saves the metadata as metadata.toml in the selected folder.
         """
-        self.metadata.conditions.ratiometric_dye = self.sec_1_value_1_button["text"]
-        self.metadata.conditions.group1 = self.sec_1_value_2_box.get()
-        self.metadata.conditions.group2 = self.sec_1_value_3_box.get()
+        self.metadata.conditions.ratiometric_dye = self.dye_button["text"]
+        self.metadata.conditions.group1 = self.group1_entry.get()
+        self.metadata.conditions.group2 = self.group2_entry.get()
         self.treatment_table.save_values()
         self.metadata.treatments = self.treatment_table.treatments
 
@@ -512,7 +507,8 @@ class MetadataFrame(tk.Frame):
             self.metadata.treatments.remove_empty_values()
         except ValueError:
             messagebox.showerror(message="Please make sure all intended begin and end fields are filled.")
-            return
+            return # this error partially overlaps with what validate_treatments check for, but I think it is different
+                   # enough to deserve to be handled separately
 
         passed_tests: list[bool] = validate_treatments(self.metadata.treatments)
         error_message = "Please make sure that:"
@@ -521,18 +517,19 @@ class MetadataFrame(tk.Frame):
                 self.metadata.treatments[agonist].begin = int(self.metadata.treatments[agonist].begin)
                 self.metadata.treatments[agonist].end = int(self.metadata.treatments[agonist].end)
             with open(Path(self.selected_folder.get()) / "metadata.toml", "w") as metadata:
-                metadata_as_dict = metadata_to_dict(self.metadata)
+                metadata_as_dict = self.metadata.to_dict()
                 toml.dump(metadata_as_dict, metadata)
                 messagebox.showinfo(message="Metadata saved!")
-                return # so that the error message is not displayed when there is no error
-        if not passed_tests[0]:
-            error_message += "\nAll begin and end values are integers."
-        if not passed_tests[1]:
-            error_message += "\nAll agonists have smaller begin values than end values."
-        if not passed_tests[2]:
-            error_message += "\nAll begin values are greater than or equal to the previous row's end value."
-                
-        messagebox.showerror(message=error_message)
+
+        else:
+            if not passed_tests[0]:
+                error_message += "\nAll begin and end values are integers."
+            if not passed_tests[1]:
+                error_message += "\nAll agonists have smaller begin values than end values."
+            if not passed_tests[2]:
+                error_message += "\nAll begin values are greater than or equal to the previous row's end value."
+                    
+            messagebox.showerror(message=error_message)
 
 
 class TreatmentTable(tk.Frame):
@@ -586,6 +583,7 @@ class TreatmentTable(tk.Frame):
         treatments = Treatments()
         for row in self.rows:
             treatments[row[0].get()] = (row[1].get(), row[2].get())
+            # treatments[name] = (begin, end)
 
         self.treatments = treatments
 
@@ -595,7 +593,7 @@ class TreatmentTable(tk.Frame):
         """
         for i, name in enumerate(self.treatments):
             self.rows[i][0].delete(0, tk.END)
-            self.rows[i][0].insert(0, name)
+            self.rows[i][0].insert(0, name) # name entry in the ith row
             for j, value in enumerate(self.treatments[name].values, start=1):
                 self.rows[i][j].delete(0, tk.END)
-                self.rows[i][j].insert(0, str(value))
+                self.rows[i][j].insert(0, str(value)) # begin (j=1) and end (j=2) entries in the ith row

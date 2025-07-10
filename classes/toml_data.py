@@ -1,11 +1,27 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
+from typing import Any
 
-@dataclass
 class Config:
-    input: Input
-    output: Output
+    def __init__(self, config_as_dict: dict[str, dict[str, Any]]) -> None:
+        input_section = config_as_dict["input"]
+        self.input = Input(Path(input_section["target_folder"]),
+                        input_section["method"],
+                        input_section["SD_multiplier"],
+                        input_section["smoothing_range"])
+        
+        output_section = config_as_dict["output"]
+        self.output = Output(output_section["report_name"],
+                            output_section["summary_name"])
+        
+    def to_dict(self) -> dict[str, dict[str, Any]]:
+        result = {}
+
+        result["input"] = asdict(self.input)
+        result["output"] = asdict(self.output)
+
+        return result
 
 @dataclass
 class Input:
@@ -19,10 +35,26 @@ class Output:
     report_name: str
     summary_name: str
 
-@dataclass
 class Metadata:
-    conditions: Conditions
-    treatments: Treatments
+    def __init__(self, metadata_as_dict: dict[str, dict[str, Any]]):
+        conditions_section = metadata_as_dict["conditions"]
+        self.conditions = Conditions(conditions_section["ratiometric_dye"],
+                                    conditions_section["group1"],
+                                    conditions_section["group2"])
+        
+        treatments_as_dict = metadata_as_dict["treatments"]
+        self.treatments = Treatments()
+
+        for key, values in treatments_as_dict.items():
+            self.treatments[key] = (values["begin"], values["end"])
+
+    def to_dict(self) -> dict[str, dict[str, Any]]:
+        result = {}
+
+        result["conditions"] = self.conditions
+        result["treatments"] = self.treatments
+
+        return result
 
 @dataclass
 class Conditions:

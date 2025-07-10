@@ -2,8 +2,8 @@ import argparse
 import toml
 from pathlib import Path
 from classes.analyzer import DataAnalyzer
+from classes.toml_data import Config
 from functions.validation import validate_config, validate_data_path
-from functions.toml_handling import dict_to_config
 from tkinter import IntVar
 
 
@@ -15,7 +15,7 @@ def main():
             if errors:
                 print(errors)
                 exit()           
-            config = dict_to_config(config)
+            config = Config(config)
     except FileNotFoundError:
         print("Config file needed. Should not have deleted or renamed it.")
         exit()
