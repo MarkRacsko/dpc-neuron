@@ -24,11 +24,13 @@ PADDING_Y = 30
 PADDING_X = 120
 MAIN_BUTTON_Y = 90 # used for placing the frame containing the main 6 buttons and alternatively the progress tracker
 PANEL_Y = 220 # used for placing the config and metadata editor panels
-SECTION_1_BASE_Y = 20 # first section of the editor panel
-SECTION_2_BASE_Y = 180 # second second of the editor panel
+CONF_SECTION_1_BASE_Y = 20
+CONF_SECTION_2_BASE_Y = 180
+META_SECTION_1_BASE_Y = 70 # first section of the editor panel
+META_SECTION_2_BASE_Y = 200 # second second of the editor panel
 EDITOR_PADDING_X = 200 # BASE_X + this is the x coord for items in the second column of the editor panels
 OFFSCREEN_X = 500 # this is used to move unwanted items offscreen
-BOTTOM_TABLE_Y = 220 # y coord for the treatment table on the metadata panel
+BOTTOM_TABLE_Y = 240 # y coord for the treatment table on the metadata panel
 
 
 # this defines different screen sizes, resizing is done by a callback funtion that triggers when the value of
@@ -36,7 +38,7 @@ BOTTOM_TABLE_Y = 220 # y coord for the treatment table on the metadata panel
 DISPLAY_MODES: dict[str, str] = {
     "analysis": "460x180",
     "config": "460x550",
-    "metadata": "460x770"
+    "metadata": "460x800"
 }
 
 # this is used for selecting what message we want to display when the program has finished its work
@@ -187,7 +189,7 @@ class MainWindow:
         
         self.analyzer = DataAnalyzer(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
         self.analyzer.create_caches()
-        
+
         error_list = self.analyzer.create_subdir_instances()
         for error_message in error_list: # if there was no error, nothing happens
             messagebox.showerror(message=error_message)
@@ -305,62 +307,62 @@ class ConfigFrame(tk.Frame):
 
         # Input section
         self.input_label = tk.Label(self, text="Input section", font=FONT_L)
-        self.input_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
+        self.input_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y)
 
         ## Target folder selection
         self.target_folder_label = tk.Label(self, text="Target folder:", font=FONT_M)
-        self.target_folder_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.target_folder_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + PADDING_Y)
         self.target_folder_button = tk.Button(self, text="Browse...",font=FONT_M, command=self.select_folder)
-        self.target_folder_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y, width=103, height=30)
+        self.target_folder_button.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + PADDING_Y, width=103, height=30)
 
         ## Method
         self.method_label = tk.Label(self, text="Method:", font=FONT_M)
-        self.method_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.method_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + 2 * PADDING_Y)
         self.selected_method = tk.StringVar()
         self.selected_method.set(self.config.input.method)
         self.method_options: list[str] = ["baseline", "previous", "derivative"]
         self.method_menu = tk.OptionMenu(self, self.selected_method, *self.method_options)
-        self.method_menu.place(x=BASE_X + EDITOR_PADDING_X - 1, y=SECTION_1_BASE_Y + 2 * PADDING_Y, width=105, height=30)
+        self.method_menu.place(x=BASE_X + EDITOR_PADDING_X - 1, y=CONF_SECTION_1_BASE_Y + 2 * PADDING_Y, width=105, height=30)
 
         ## SD multiplier
         self.SD_multiplier_label = tk.Label(self, text="SD multiplier:", font=FONT_M)
-        self.SD_multiplier_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.SD_multiplier_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + 3 * PADDING_Y)
         self.SD_multiplier_entry = int_entry(self)
-        self.SD_multiplier_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.SD_multiplier_entry.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 3 * PADDING_Y)
         self.SD_multiplier_entry.delete(0, tk.END)
         self.SD_multiplier_entry.insert(0, str(self.config.input.SD_multiplier))
 
         ## Smoothing range
         self.smoothing_label = tk.Label(self, text="Smoothing range:", font=FONT_M)
-        self.smoothing_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
+        self.smoothing_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + 4 * PADDING_Y)
         self.smoothing_entry = int_entry(self)
         self.smoothing_entry.delete(0, tk.END)
         self.smoothing_entry.insert(0, str(self.config.input.smoothing_range))
-        self.smoothing_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 4 * PADDING_Y)
+        self.smoothing_entry.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 4 * PADDING_Y)
 
         # Output section
         self.output_label = tk.Label(self, text="Output section", font=FONT_L)
-        self.output_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
+        self.output_label.place(x=BASE_X, y=CONF_SECTION_2_BASE_Y)
 
         ## Report name
         self.report_label = tk.Label(self, text="Report name:", font=FONT_M)
-        self.report_label.place(x=BASE_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.report_label.place(x=BASE_X, y=CONF_SECTION_2_BASE_Y + PADDING_Y)
         self.report_entry = str_entry(self)
-        self.report_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + PADDING_Y)
+        self.report_entry.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_2_BASE_Y + PADDING_Y)
         self.report_entry.delete(0, tk.END)
         self.report_entry.insert(0, self.config.output.report_name)
 
         ## Summary name
         self.summary_label = tk.Label(self, text="Summary name:", font=FONT_M)
-        self.summary_label.place(x=BASE_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.summary_label.place(x=BASE_X, y=CONF_SECTION_2_BASE_Y + 2 * PADDING_Y)
         self.summary_entry = str_entry(self)
-        self.summary_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_2_BASE_Y + 2 * PADDING_Y)
+        self.summary_entry.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_2_BASE_Y + 2 * PADDING_Y)
         self.summary_entry.delete(0, tk.END)
         self.summary_entry.insert(0, self.config.output.summary_name)
         
         # Save button for config file
         self.save_config_button = tk.Button(self, text="Save", font=FONT_L, command=self.save_config)
-        self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=SECTION_2_BASE_Y + 10 + 3 * PADDING_Y, width=save_button_size, height=30)
+        self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=CONF_SECTION_2_BASE_Y + 10 + 3 * PADDING_Y, width=save_button_size, height=30)
 
     def select_folder(self) -> None:
         """Called when pressing the button to select the target folder.
@@ -405,47 +407,47 @@ class MetadataFrame(tk.Frame):
         is that this is how we can update the displayed information after the object is instantiated with dummy values.
         """
         # Folder selector button
-        self.metabata_browse_button = tk.Button(self, text="Select\nfolder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
-        self.metabata_browse_button.place(x=BASE_X + 2.4 * PADDING_X, y=BASE_Y, width=self.browse_button_width, height=self.browse_button_height)
+        self.metabata_browse_button = tk.Button(self, text="Select folder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
+        self.metabata_browse_button.place(x=BASE_X, y=10, width=3*self.browse_button_width, height=self.browse_button_height/1.5)
         if not self.selected_folder.get():
             self.select_measurement_folder_and_load_metadata()
         
         # Conditions section
         self.conditions_label = tk.Label(self, text="Conditions section", font=FONT_L)
-        self.conditions_label.place(x=BASE_X, y=SECTION_1_BASE_Y)
+        self.conditions_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y - 10)
 
         # Ratiometric dye
         self.dye_label = tk.Label(self, text="Ratiometric dye:", font=FONT_M)
-        self.dye_label.place(x=BASE_X, y=SECTION_1_BASE_Y + PADDING_Y)
-        self.dye_button = tk.Button(self, text=f"{self.metadata.conditions.ratiometric_dye}", font=FONT_M, command=self.ratiometric_switch)
-        self.dye_button.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + PADDING_Y)
+        self.dye_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + PADDING_Y)
+        self.dye_button = tk.Button(self, text=f"{self.metadata.conditions.ratiometric_dye.capitalize()}", font=FONT_M, command=self.ratiometric_switch)
+        self.dye_button.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + PADDING_Y, width=102, height=35)
 
         # Group1
         self.group1_label = tk.Label(self, text="Group 1:", font=FONT_M)
-        self.group1_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.group1_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 2 * PADDING_Y)
         self.group1_entry = str_entry(self)
         self.group1_entry.delete(0, tk.END)
         self.group1_entry.insert(0, self.metadata.conditions.group1)
-        self.group1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
+        self.group1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
 
         # Group2
         self.group2_label = tk.Label(self, text="Group 2:", font=FONT_M)
-        self.group2_label.place(x=BASE_X, y=SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.group2_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 3 * PADDING_Y)
         self.group2_entry = str_entry(self)
-        self.group2_entry.place(x=BASE_X + EDITOR_PADDING_X, y=SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
+        self.group2_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
         self.group2_entry.delete(0, tk.END)
         self.group2_entry.insert(0, self.metadata.conditions.group2)
 
         # Treatment section
         self.treatment_label = tk.Label(self, text="Treatment section", font=FONT_L)
-        self.treatment_label.place(x=BASE_X, y=SECTION_2_BASE_Y)
+        self.treatment_label.place(x=BASE_X, y=META_SECTION_2_BASE_Y)
 
         self.update_idletasks()
         self.treatment_table = TreatmentTable(self, self.metadata.treatments, width=440, height=490)
         self.treatment_table.place(x=BASE_X + 40, y=BOTTOM_TABLE_Y)
         
         self.save_metadata_button = tk.Button(self, text="Save Metadata", font=FONT_M, command=self.save_metadata)
-        self.save_metadata_button.place(x=230, y=SECTION_2_BASE_Y + 40)
+        self.save_metadata_button.place(x=230, y=META_SECTION_2_BASE_Y + 40)
 
     def ratiometric_switch(self) -> None:
         """Toggles what to display on the button for the ratiometric dye value.
