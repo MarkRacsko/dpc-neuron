@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+from .converter import Converter
 from .subdir import SubDir
 from .toml_data import Config
 from threading import Thread
@@ -26,9 +27,9 @@ class DataAnalyzer:
     def create_subdir_instances(self) -> list[str]:
         """Creates a new SubDir object for the given path and appends it to a (private) list.
 
-        Args:
-            subdir_path (Path): Path to this subdirectory in the target directory we are processing.
-            repeat (bool): The --repeat command line flag as a bool.
+        Returns:
+            list[str]: A list of error messages produced by the individual subdirectory level processor objects.
+            Empty if no errors occured.
         """
         errors = []
         for subdir_path in self.config.input.target_folder.iterdir():
@@ -40,6 +41,10 @@ class DataAnalyzer:
                 self._subdirs.append(instance)
         
         return errors
+    
+    def create_caches(self) -> None:
+        converter = Converter(self.config.input.target_folder, self.config.output.report_name)
+        converter.convert_to_feather(self.finished_files)
 
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.

@@ -59,7 +59,8 @@ def main():
         print("Exiting.")
         exit()
     
-    data_analyzer = DataAnalyzer(config, IntVar(), args.repeat)      
+    data_analyzer = DataAnalyzer(config, IntVar(), args.repeat)     
+    data_analyzer.create_caches() 
     error_list = data_analyzer.create_subdir_instances()
     for error in error_list:
         print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed

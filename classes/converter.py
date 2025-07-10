@@ -1,69 +1,109 @@
 import pandas as pd
 import python_calamine as cala
 from pathlib import Path
-from threading import Lock
+from threading import Lock, Thread
 from tkinter import IntVar
+from shutil import rmtree
 
 NAME_SHEET_SEP: str = " SHEET:"
+CACHE_NAME = ".cache"
 
 class Converter:
-    _lock = Lock()
-    """Serves the purpose of creating a cache from the input measurement files because reading Excel with pandas is
-    painfully slow compared to feather or other binary file formats.
+    """Serves the purpose of creating and managing a cache from the input measurement files because reading Excel with
+    pandas is painfully slow compared to feather or other binary file formats.
     """
-    def __init__(self, folder: Path, cache_path: Path, report_path: Path) -> None:
-        self.folder = folder.absolute()
-        self.cache_path = cache_path.absolute()
-        self.report_path = report_path.absolute()
+    def __init__(self, folder: Path, report_name: str) -> None:
+        self.target_folder = folder.absolute()
+        self.report_name = report_name
+        self.lock = Lock()
 
     def convert_to_feather(self, finished_files: IntVar):
-        """Reads in all Excel files found in this measurement folder and converts each of their sheets into a separate
+        """Reads in all Excel files found in this measurement folders and converts each of their sheets into a separate
         .feather file. Uses calamine because it is a bit faster than openpyxl.
+
+        Args:
+            finished_files (IntVar): A tk variable received from the GUI to keep track of how many files have been
+            finished.
         """
-        measurement_files = [Path(f.name) for f in self.folder.glob("*.xlsx") if f != self.report_path]
-        if not self.cache_path.exists():
-            Path.mkdir(self.cache_path)
+        def work(folder: Path, cache_path: Path, files: list[Path]):
+            for file in files:
+                wb = cala.CalamineWorkbook.from_path(folder / file)
+                for sheet in wb.sheet_names:
+                    content = wb.get_sheet_by_name(sheet).to_python()
+                    headers, numbers = content[0], content[1:]
+                    df = pd.DataFrame(data=numbers, columns=headers)
 
-        for file in measurement_files:
-            wb = cala.CalamineWorkbook.from_path(self.folder / file)
-            for sheet in wb.sheet_names:
-                content = wb.get_sheet_by_name(sheet).to_python()
-                headers, numbers = content[0], content[1:]
-                df = pd.DataFrame(data=numbers, columns=headers)
+                    df.to_feather(cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.feather")
 
-                df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.feather")
-
-            with self._lock:
-                finished_files.set(finished_files.get() + 1)
-
+                with self.lock:
+                    finished_files.set(finished_files.get() + 1)
+        
+        threads = []
+        for folder in self.target_folder.iterdir():
+            if folder.is_dir():
+                cache_path = folder / CACHE_NAME
+                report_path = folder / f"{self.report_name}{folder.name}.xlsx"
+                measurement_files = [Path(f.name) for f in folder.glob("*.xlsx") if f != report_path]
+                if not cache_path.exists():
+                    Path.mkdir(cache_path)
+                threads.append(Thread(target=work, args=(folder, cache_path, measurement_files)))
+        
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
 
     def convert_to_excel(self, finished_files: IntVar):
         """Converts the cached .feather files back into Excel, overwriting the original files.
+
+        Args:
+            finished_files (IntVar): A tk variable received from the GUI to keep track of how many files have been
+            finished.
         """
-        if not self.cache_path.exists:
-            return
-
-        cached_files = [f for f in self.cache_path.glob("*.feather")]
-        excel_data: dict[str, list[tuple[str, pd.DataFrame]]] = {}
-        # filenames mapped to lists of their content as (sheetname, data) pairs
-        
-        for file in cached_files:
-            file_name = file.name
-            file_data = pd.read_feather(self.cache_path / file_name)
+        def work(folder: Path, cache_path: Path):
+            cached_files = [f for f in cache_path.glob("*.feather")]
+            excel_data: dict[str, list[tuple[str, pd.DataFrame]]] = {}
+            # filenames mapped to lists of their content as (sheetname, data) pairs
             
-            file_name, sheet_name = file_name.split(sep=NAME_SHEET_SEP)
-            sheet_name = sheet_name.rstrip(".feather")
+            for file in cached_files:
+                file_name = file.name
+                file_data = pd.read_feather(cache_path / file_name)
+                
+                file_name, sheet_name = file_name.split(sep=NAME_SHEET_SEP)
+                sheet_name = sheet_name.rstrip(".feather")
 
-            if file_name in excel_data:
-                excel_data[file_name].append((sheet_name, file_data))
+                if file_name in excel_data:
+                    excel_data[file_name].append((sheet_name, file_data))
+                else:
+                    excel_data[file_name] = [(sheet_name, file_data)]
+
+            for file_name, contents in excel_data.items():
+                contents = sorted(contents, key=lambda x: x[0])
+                with pd.ExcelWriter(folder / file_name) as writer:
+                    for sheet, df in contents:
+                        df.to_excel(writer, sheet_name=sheet, index=False)
+                
+                with self.lock:
+                    finished_files.set(finished_files.get() + 1)
+
+
+        threads = []
+        for folder in self.target_folder.iterdir():
+            cache_path = folder / CACHE_NAME
+            if cache_path.exists:
+                threads.append(Thread(target=work, args=(folder, cache_path)))
             else:
-                excel_data[file_name] = [(sheet_name, file_data)]
+                continue
 
-        for file_name, contents in excel_data.items():
-            contents = sorted(contents, key=lambda x: x[0])
-            with pd.ExcelWriter(self.folder / file_name) as writer:
-                for sheet, df in contents:
-                    df.to_excel(writer, sheet_name=sheet, index=False)
-            
-            with self._lock:
-                finished_files.set(finished_files.get() + 1)
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+    def purge_cache(self):
+        for folder in self.target_folder.iterdir():
+            if folder.is_dir():
+                cache_path = folder / CACHE_NAME
+                if cache_path.exists():
+                    rmtree(cache_path)
+        

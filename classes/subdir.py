@@ -8,7 +8,7 @@ from threading import Lock
 from tkinter import IntVar
 from functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
 from functions.validation import validate_metadata
-from .converter import Converter, NAME_SHEET_SEP
+from .converter import NAME_SHEET_SEP
 
 class SubDir:
     _error_lock = Lock()
@@ -18,7 +18,6 @@ class SubDir:
         self.path = path
         self.cache_path = path / ".cache"
         self.report_path = path / f"{report_name}{path.name}.xlsx"
-        self.converter = Converter(path, self.cache_path, self.report_path)
         self.treatment_col_names: list[str] = []
         self.treatment_windows: dict[str, slice[int]] = {}
         self.report: Optional[pd.DataFrame] = None
@@ -34,12 +33,6 @@ class SubDir:
         if errors:
             self.need_to_work = False
             return errors
-        
-        if not self.cache_path.exists():
-            Path.mkdir(self.cache_path)
-            self.converter.convert_to_feather(finished_files)
-
-
 
     def parse_metadata(self) -> str | None:
         try:

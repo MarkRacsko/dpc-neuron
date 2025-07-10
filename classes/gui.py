@@ -5,7 +5,6 @@ from tkinter import filedialog
 
 from itertools import cycle
 from pathlib import Path
-from shutil import rmtree
 from threading import Thread
 
 from .analyzer import DataAnalyzer
@@ -31,7 +30,6 @@ EDITOR_PADDING_X = 200 # BASE_X + this is the x coord for items in the second co
 OFFSCREEN_X = 500 # this is used to move unwanted items offscreen
 BOTTOM_TABLE_Y = 220 # y coord for the treatment table on the metadata panel
 
-CACHE_NAME = ".cache"
 
 # this defines different screen sizes, resizing is done by a callback funtion that triggers when the value of
 # the StringVar storing the current mode changes.
@@ -79,6 +77,7 @@ class MainWindow:
         self.root.resizable(False, True)
 
         self.analyzer: DataAnalyzer
+        self.converter = Converter(self.config.input.target_folder, self.config.output.report_name)
         
         self.checkbox_frame = tk.Frame()
         self.checkbox_frame.place(x=0, y=0, width=460, height=90)
@@ -187,6 +186,8 @@ class MainWindow:
             return
         
         self.analyzer = DataAnalyzer(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
+        self.analyzer.create_caches()
+        
         error_list = self.analyzer.create_subdir_instances()
         for error_message in error_list: # if there was no error, nothing happens
             messagebox.showerror(message=error_message)
@@ -278,25 +279,10 @@ class MainWindow:
         self.button_frame.place(x=OFFSCREEN_X)
         self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y, width=460, height=230)
 
-        path = self.config.input.target_folder
-        report_name = self.config.output.report_name
-        
-        converters = []
-        for folder in path.iterdir():
-            if folder.is_dir():
-                cache_path = folder / CACHE_NAME
-                report_path = folder / f"{report_name}{folder.name}.xlsx"
-                converters.append(Converter(folder, cache_path, report_path))
-
         if target == "feather":
-            threads = [Thread(target=conv.convert_to_feather, args=(self.finished_file_counter,)) for conv in converters]
+            self.converter.convert_to_feather(self.finished_file_counter)
         else:
-            threads = [Thread(target=conv.convert_to_excel, args=(self.finished_file_counter,)) for conv in converters]
-        
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
+            self.converter.convert_to_excel(self.finished_file_counter)
 
         messagebox.showinfo(message="Conversion finished!")
 
@@ -304,15 +290,9 @@ class MainWindow:
         self.button_frame.place(x=BASE_X, y=MAIN_BUTTON_Y)
         self.tracker_frame.place(x=OFFSCREEN_X)
         self.finished_file_counter.set(0)
-
     
     def delete_cache_button_press(self) -> None:
-        target = self.config.input.target_folder
-        for folder in target.iterdir():
-            if folder.is_dir():
-                cache_path = folder / CACHE_NAME
-                if cache_path.exists():
-                    rmtree(cache_path)
+        self.converter.purge_cache()
         messagebox.showinfo(message="All cached files removed!")
 
 
