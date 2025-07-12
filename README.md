@@ -62,3 +62,4 @@ Reading Excel files into pandas DataFrames is dreadfully slow, so I've implement
 
 TODO:
 - deal with windows vs UNIX path differences
+- investigate why converting to feather format failed on windows at work

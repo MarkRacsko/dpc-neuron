@@ -5,7 +5,7 @@ from threading import Lock, Thread
 from tkinter import IntVar
 from shutil import rmtree
 
-NAME_SHEET_SEP: str = " SHEET:"
+NAME_SHEET_SEP: str = " SHEET_"
 CACHE_NAME = ".cache"
 
 class Converter:

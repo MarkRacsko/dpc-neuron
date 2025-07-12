@@ -64,7 +64,7 @@ class DataAnalyzer:
             thread.join()
 
 
-    def tabulate_data(self):
+    def summarize_results(self):
         """Creates a summary file from all available measurement reports.
         """
         sum_conf = self.config.output

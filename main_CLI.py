@@ -71,7 +71,7 @@ def main():
         for error in error_list:
             print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed
     if tabulating:
-        data_analyzer.tabulate_data()
+        data_analyzer.summarize_results()
     if args.graph:
         data_analyzer.graph_data()
 

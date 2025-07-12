@@ -89,9 +89,9 @@ class MainWindow:
         self.check_p = tk.Checkbutton(self.checkbox_frame, text="Process", font=FONT_M, variable=self.check_p_state)
         self.check_p.place(x=BASE_X, y=BASE_Y)
 
-        # Tabulation checkbox
+        # Summary checkbox
         self.check_t_state = tk.IntVar()
-        self.check_t = tk.Checkbutton(self.checkbox_frame, text="Tabulate", font=FONT_M, variable=self.check_t_state)
+        self.check_t = tk.Checkbutton(self.checkbox_frame, text="Summarize", font=FONT_M, variable=self.check_t_state)
         self.check_t.place(x=BASE_X, y=BASE_Y + PADDING_Y)
 
         # Graphing checkbox
@@ -244,7 +244,7 @@ class MainWindow:
             for error in error_list:
                 messagebox.showerror(message=error) # if the list is empty, nothing will happen
         if tab:
-            self.analyzer.tabulate_data()
+            self.analyzer.summarize_results()
         if graph:
             self.analyzer.graph_data()
 

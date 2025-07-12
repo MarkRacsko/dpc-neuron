@@ -51,8 +51,8 @@ class Metadata:
     def to_dict(self) -> dict[str, dict[str, Any]]:
         result = {}
 
-        result["conditions"] = self.conditions
-        result["treatments"] = self.treatments
+        result["conditions"] = asdict(self.conditions)
+        result["treatments"] = asdict(self.treatments)
 
         return result
 
