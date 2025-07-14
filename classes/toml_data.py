@@ -3,6 +3,12 @@ from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Any
 
+type TimeValue = int | str
+# This is used in the _Treatment class for the begin and end values of agonist treatments. The reason it exists is that
+# the way my validation and data processing functions work forces makes it so that these fields cannot be declared as
+# just int or just str. (And I don't want to redesign the whole thing at this point.)
+
+@dataclass(init=False)
 class Config:
     def __init__(self, config_as_dict: dict[str, dict[str, Any]]) -> None:
         input_section = config_as_dict["input"]
@@ -35,6 +41,7 @@ class Output:
     report_name: str
     summary_name: str
 
+@dataclass(init=False)
 class Metadata:
     def __init__(self, metadata_as_dict: dict[str, dict[str, Any]]):
         conditions_section = metadata_as_dict["conditions"]
@@ -52,7 +59,7 @@ class Metadata:
         result = {}
 
         result["conditions"] = asdict(self.conditions)
-        result["treatments"] = asdict(self.treatments)
+        result["treatments"] = self.treatments.treatment_dict
 
         return result
 
@@ -82,6 +89,9 @@ class Treatments:
     def __delitem__(self, item: str):
         del self.treatment_dict[item]
 
+    def items(self):
+        return self.treatment_dict.items()
+
     def remove_empty_values(self):
         """Checks the treatments dictionary that comes from the table in the GUI metadata editor for empty rows and 
         removes them.
@@ -93,9 +103,6 @@ class Treatments:
         Raises:
             ValueError: If there is a treatment where exactly one of the begin and end values is the empty string, ie. the
             user filled only one entry.
-
-        Returns:
-            dict[str, dict[str, int | str]]: The same dictionary but with empty rows removed.
         """
         result: dict[str, _Treatment] = {}
         for name, treatment in self.treatment_dict.items():
@@ -114,9 +121,9 @@ class Treatments:
 
 @dataclass
 class _Treatment:
-    begin: int | str
-    end: int | str
+    begin: TimeValue
+    end: TimeValue
 
     @property
-    def values(self) -> tuple[int | str, int | str]:
+    def values(self) -> tuple[TimeValue, TimeValue]:
         return (self.begin, self.end)

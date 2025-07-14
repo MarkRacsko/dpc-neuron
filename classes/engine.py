@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 from .converter import Converter
-from .subdir import SubDir
+from .processor import DataProcessor
 from .toml_data import Config
 from threading import Thread
 from tkinter import IntVar
@@ -9,7 +9,7 @@ from tkinter import IntVar
 type ExperimentalCondition = list[str]
 type ExperimentalData = tuple[str, pd.Series[int]]
 
-class DataAnalyzer:
+class AnalysisEngine:
     """Orchestrates data processing and presents a simpler interface to main.
 
     Attributes:
@@ -19,12 +19,12 @@ class DataAnalyzer:
     """
     def __init__(self, config: Config, finished_files: IntVar, repeat: bool) -> None:
         self.config = config
-        self._subdirs: list[SubDir] = []
+        self._processors: list[DataProcessor] = []
         self.repeat = repeat
         self.finished_files = finished_files
         self.experiments: dict[ExperimentalCondition, list[ExperimentalData]]
 
-    def create_subdir_instances(self) -> list[str]:
+    def create_processor_instances(self) -> list[str]:
         """Creates a new SubDir object for the given path and appends it to a (private) list.
 
         Returns:
@@ -32,13 +32,13 @@ class DataAnalyzer:
             Empty if no errors occured.
         """
         errors = []
-        for subdir_path in self.config.input.target_folder.iterdir():
-            if subdir_path.is_dir():
-                instance = SubDir(subdir_path, self.config.output.report_name)
+        for path in self.config.input.target_folder.iterdir():
+            if path.is_dir():
+                instance = DataProcessor(path, self.config.output.report_name)
                 error = instance.preprocessing(self.repeat, self.finished_files)
                 if error is not None:
                     errors.append(error)
-                self._subdirs.append(instance)
+                self._processors.append(instance)
         
         return errors
     
@@ -55,8 +55,8 @@ class DataAnalyzer:
                      self.finished_files,
                      errors)
         threads = []
-        for subdir in self._subdirs:
-            thread = Thread(target=subdir.make_report, args=arg_tuple)
+        for processor in self._processors:
+            thread = Thread(target=processor.make_report, args=arg_tuple)
             threads.append(thread)
             thread.start()
 
@@ -69,16 +69,16 @@ class DataAnalyzer:
         """
         sum_conf = self.config.output
         summary_file_name: Path = self.config.input.target_folder / f"{sum_conf.summary_name}.xlsx"
-        for subdir in self._subdirs:
+        for processor in self._processors:
             
-            subdir.load_summary_from_report()
-            assert isinstance(subdir.report, pd.DataFrame) # will never fail, but Pylance can't see why
-            condition: ExperimentalCondition = list(subdir.treatment_col_names)
-            subdir_data: ExperimentalData = (subdir.path.name, subdir.report[["cell_type"] + subdir.treatment_col_names].value_counts())
+            processor.load_summary_from_report()
+            assert isinstance(processor.report, pd.DataFrame) # will never fail, but Pylance can't see why
+            condition: ExperimentalCondition = list(processor.treatment_col_names)
+            results: ExperimentalData = (processor.path.name, processor.report[["cell_type"] + processor.treatment_col_names].value_counts())
             if condition not in self.experiments.keys():
-                self.experiments[condition] = [subdir_data]
+                self.experiments[condition] = [results]
             else:
-                self.experiments[condition].append(subdir_data)
+                self.experiments[condition].append(results)
         
         with pd.ExcelWriter(summary_file_name) as writer:
             for condition, data in self.experiments.items():
@@ -98,5 +98,5 @@ class DataAnalyzer:
         """Makes graphs from every measurement in every subdirectory. The graphs will be saved in new folders, each
         named after the measurement file from which the graphs were created.
         """
-        for subdir in self._subdirs:
-            subdir.make_graphs()
+        for processor in self._processors:
+            processor.make_graphs()

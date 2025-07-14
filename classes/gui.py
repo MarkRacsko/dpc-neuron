@@ -7,7 +7,7 @@ from itertools import cycle
 from pathlib import Path
 from threading import Thread
 
-from .analyzer import DataAnalyzer
+from .engine import AnalysisEngine
 from .converter import Converter
 from .toml_data import Config, Metadata, Treatments
 
@@ -78,7 +78,7 @@ class MainWindow:
         self.current_mode.trace_add("write", self.resize_window)
         self.root.resizable(False, True)
 
-        self.analyzer: DataAnalyzer
+        self.analyzer: AnalysisEngine
         self.converter = Converter(self.config.input.target_folder, self.config.output.report_name)
         
         self.checkbox_frame = tk.Frame()
@@ -187,10 +187,10 @@ class MainWindow:
             "\nand \"derivative\".\n\nSee README.md")
             return
         
-        self.analyzer = DataAnalyzer(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
+        self.analyzer = AnalysisEngine(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
         self.analyzer.create_caches()
 
-        error_list = self.analyzer.create_subdir_instances()
+        error_list = self.analyzer.create_processor_instances()
         for error_message in error_list: # if there was no error, nothing happens
             messagebox.showerror(message=error_message)
 

@@ -1,7 +1,7 @@
 import argparse
 import toml
 from pathlib import Path
-from classes.analyzer import DataAnalyzer
+from classes.engine import AnalysisEngine
 from classes.toml_data import Config
 from functions.validation import validate_config, validate_data_path
 from tkinter import IntVar
@@ -59,9 +59,9 @@ def main():
         print("Exiting.")
         exit()
     
-    data_analyzer = DataAnalyzer(config, IntVar(), args.repeat)     
+    data_analyzer = AnalysisEngine(config, IntVar(), args.repeat)     
     data_analyzer.create_caches() 
-    error_list = data_analyzer.create_subdir_instances()
+    error_list = data_analyzer.create_processor_instances()
     for error in error_list:
         print(error) # if the list is empty, ie. nothing went wrong, nothing will be printed
     
