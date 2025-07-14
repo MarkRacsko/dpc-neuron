@@ -253,7 +253,6 @@ class MainWindow:
         self.current_mode.set(previous_mode)
         self.tracker_frame.place(x=OFFSCREEN_X)
         self.button_frame.place(x=BASE_X, y=MAIN_BUTTON_Y)
-        self.finished_file_counter.set(0)
     
     def to_cache_button_press(self) -> None:
         """Changes the window size to indicate work is in progress then calls the conversion method to convert all

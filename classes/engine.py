@@ -62,16 +62,24 @@ class AnalysisEngine:
 
         for thread in threads:
             thread.join()
-
+        
+        self.finished_files.set(0)
 
     def summarize_results(self):
         """Creates a summary file from all available measurement reports.
         """
-        sum_conf = self.config.output
-        summary_file_name: Path = self.config.input.target_folder / f"{sum_conf.summary_name}.xlsx"
+        name = self.config.output.summary_name
+        summary_file_name: Path = self.config.input.target_folder / f"{name}.xlsx"
+        threads = []
         for processor in self._processors:
-            
-            processor.load_summary_from_report()
+            thread = Thread(target=processor.load_summary_from_report, args=(self.finished_files,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        for processor in self._processors:
             assert isinstance(processor.report, pd.DataFrame) # will never fail, but Pylance can't see why
             condition: ExperimentalCondition = list(processor.treatment_col_names)
             results: ExperimentalData = (processor.path.name, processor.report[["cell_type"] + processor.treatment_col_names].value_counts())
@@ -93,10 +101,20 @@ class AnalysisEngine:
                 
                 summary.to_excel(writer, sheet_name=sheet_name)
 
+        self.finished_files.set(0)
+
 
     def graph_data(self):
         """Makes graphs from every measurement in every subdirectory. The graphs will be saved in new folders, each
         named after the measurement file from which the graphs were created.
         """
+        threads = []
         for processor in self._processors:
-            processor.make_graphs()
+            thread = Thread(target=processor.make_graphs, args=(self.finished_files,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        self.finished_files.set(0)

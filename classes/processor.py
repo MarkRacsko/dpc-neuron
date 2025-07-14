@@ -144,7 +144,7 @@ class DataProcessor:
             with self._error_lock:
                 error_list.append(message)
 
-    def make_graphs(self):
+    def make_graphs(self, finished_files: IntVar):
         if self.report is None:
             self.report = pd.read_excel(self.report_path, sheet_name="Cells")
         
@@ -159,9 +159,9 @@ class DataProcessor:
             x_data, ratios = ratios[0], ratios[1:]
             reaction_cols = [col for col in self.report.columns if "_reaction" in col]
 
-            self.graph_data(x_data.flatten(), ratios, cell_cols, self.report[reaction_cols], graphing_path)
+            self.graph_data(x_data.flatten(), ratios, cell_cols, self.report[reaction_cols], graphing_path, finished_files)
     
-    def graph_data(self, x_data: np.ndarray, traces: np.ndarray, col_names: list[str], reactions: pd.DataFrame, save_dir: Path) -> None:
+    def graph_data(self, x_data: np.ndarray, traces: np.ndarray, col_names: list[str], reactions: pd.DataFrame, save_dir: Path, finished_files: IntVar) -> None:
         """Creates line graphs for each cell in this particular measurement file. Is called from within make_report()
         because it needs the cell trace data and that funtion only returns the report DataFrame.
 
@@ -176,6 +176,9 @@ class DataProcessor:
         """
         majors = [x for x in range(0, len(x_data) + 1, 60)]
         major_labels = [str(x//60) for x in majors]
+        max_t = len(x_data) # the unit of time here is number of frames, the purpose of this is so that we don't draw
+        # the second vertical line for the last slice
+
         for i, (cell_name, y_data) in enumerate(zip(col_names, traces), start=0):
             fig = Figure(figsize=(10, 5))
             ax = fig.subplots(1, 1)
@@ -189,14 +192,15 @@ class DataProcessor:
             agonist_label_y = ymin - (ymax - ymin) * 0.2
             reaction_label_y = ymin - (ymax - ymin) * 0.25
             for name, time_slice in self.treatment_windows.items():
-                if name == "baseline" or name == "END":
+                if name == "baseline":
                     continue
                 ax.axvline(x=time_slice.start, c="black")
-                ax.axvline(x=time_slice.stop, c="black")
+                if time_slice.stop < max_t:
+                    # we don't want to draw the second line for the final slice
+                    ax.axvline(x=time_slice.stop, c="black")
                 ax.text(x=time_slice.start, y=agonist_label_y, s=name)
-                # this next line is supposed to print TRUE under a given agonist name if the program thinks that cell reacts
-                # to that agonist and FALSE otherwise
-                # if name != "baseline":
+                # this next line is supposed to print TRUE under a given agonist name if the program thinks that cell
+                # reacts to that agonist and FALSE otherwise
                 ax.text(x=time_slice.start, y=reaction_label_y, s=str(reactions.at[i, f"{name}_reaction"]).upper())
 
             # Cell numbering is 0 indexed on purpose!
@@ -204,10 +208,11 @@ class DataProcessor:
             fig.tight_layout()
             fig.savefig(save_dir / f"Cell no. {i}.png", dpi=300)
             fig.clf()
-            print(f"Done with {cell_name}")
+            self.update_file_count(finished_files)
 
-    def load_summary_from_report(self) -> None:
+    def load_summary_from_report(self, finished_files: IntVar) -> None:
             self.report = pd.read_excel(self.report_path, sheet_name="Summary", engine="calamine")
+            self.update_file_count(finished_files)
 
     def prepare_ratiometric_data(self, file: Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
         """Reads data from Fura2 measurements, then performs background substraction, smoothing, and photobleaching

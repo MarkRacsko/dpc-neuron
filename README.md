@@ -62,4 +62,5 @@ Reading Excel files into pandas DataFrames is dreadfully slow, so I've implement
 
 TODO:
 - deal with windows vs UNIX path differences
-- investigate why converting to feather format failed on windows at work
+- write more documentation / notes for myself
+- add frames/min to the condition section because graphing needs it
