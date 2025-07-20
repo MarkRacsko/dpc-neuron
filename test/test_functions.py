@@ -1,5 +1,5 @@
-from functions.toml_handling import dict_to_metadata
 from functions.validation import validate_config, validate_metadata, validate_treatments
+from classes.toml_data import Metadata
 from pathlib import Path
 from typing import Any
 from copy import deepcopy
@@ -39,7 +39,7 @@ good_metadata_dict = {
     }
 }
 
-good_metadata = dict_to_metadata(good_metadata_dict)
+good_metadata = Metadata(good_metadata_dict)
 
 def test_config_good():
     errors = validate_config(good_config)

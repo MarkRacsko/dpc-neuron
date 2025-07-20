@@ -59,7 +59,9 @@ class Metadata:
         result = {}
 
         result["conditions"] = asdict(self.conditions)
-        result["treatments"] = self.treatments.treatment_dict
+        treatments = self.treatments.treatment_dict
+        result["treatments"] = treatments["treatment_dict"]
+        # this is so the metadata file will end up with the correct structure
 
         return result
 
