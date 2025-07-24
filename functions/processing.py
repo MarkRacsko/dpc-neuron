@@ -5,17 +5,27 @@ import numpy as np
 from numba import njit
 
 
-def normalize(array: np.ndarray, baseline) -> np.ndarray:
+def normalize(array: np.ndarray, baseline: int) -> np.ndarray:
+    """Normalizes values in a Ca trace to the mean of the baseline time period.
+
+    Args:
+        array (np.ndarray): The Ca trace to normalize.
+        baseline (int): Length of the baseline in number of frames.
+
+    Returns:
+        np.ndarray: The normalized array.
+    """
     return array / array[0:baseline].mean()
 
-@njit
+@njit # because this is by far the slowest of my analysis functions
 def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
-    """This function performs a sliding window type smoothing on an array representing a Ca trace.
+    """This function performs a sliding window type smoothing on an array representing an individual Ca trace.
 
     Args:
         array (np.ndarray): The array to be smoothed. Must be 1-dimensional.
         window_size (int, optional): The average of this many elements will be taken for the smoothing. Defaults to 5,
-        and it should be an odd number.
+        it should be an odd number, and not larger than the square root of the array's length (ie. the length of the
+        measurement in frames).
 
     Raises:
         ValueError: If the input array is of the incorrect shape, or the selected window_size is too large or it isn't odd.
@@ -23,16 +33,16 @@ def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
     Returns:
         np.ndarray: The smoothed array.
     """
-    # Should be compatible with numba. Homogeneous sets of ints are supported.
+    # these checks are strictly speaking not necessary in this project, but their performance impact should be minimal
+    # so I'm keeping them as a reminder (the user has no control over the array dimensions, and the window_size is also
+    # validated elsewhere)
     if array.ndim != 1:
         raise ValueError("Input array must be 1-dimensional.")
     if window_size % 2 == 0:
         raise ValueError("Window size should be an odd number.")
     length = len(array)
     if window_size > math.sqrt(length):
-        raise ValueError(
-            "Window size should not be larger than the square root of the length of the array."
-        )
+        raise ValueError("Window size should not be larger than the square root of the length of the array.")
 
     sliding_size, half_size = window_size // 2 + 1, window_size // 2
     sliding_index = 0

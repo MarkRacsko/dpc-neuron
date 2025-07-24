@@ -62,5 +62,4 @@ Reading Excel files into pandas DataFrames is dreadfully slow, so I've implement
 
 TODO:
 - deal with windows vs UNIX path differences
-- write more documentation / notes for myself
 - add frames/min to the condition section because graphing needs it

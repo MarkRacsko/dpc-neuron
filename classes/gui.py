@@ -24,16 +24,15 @@ PADDING_Y = 30
 PADDING_X = 120
 MAIN_BUTTON_Y = 90 # used for placing the frame containing the main 6 buttons and alternatively the progress tracker
 PANEL_Y = 220 # used for placing the config and metadata editor panels
-CONF_SECTION_1_BASE_Y = 20
-CONF_SECTION_2_BASE_Y = 180
-META_SECTION_1_BASE_Y = 70 # first section of the editor panel
-META_SECTION_2_BASE_Y = 200 # second second of the editor panel
+CONF_SECTION_1_BASE_Y = 20 # first section of the config editor panel
+CONF_SECTION_2_BASE_Y = 180 # second section of the config editor panel
+META_SECTION_1_BASE_Y = 70 # first section of the metadata editor panel
+META_SECTION_2_BASE_Y = 200 # second second of the metadata editor panel
 EDITOR_PADDING_X = 200 # BASE_X + this is the x coord for items in the second column of the editor panels
 OFFSCREEN_X = 500 # this is used to move unwanted items offscreen
 BOTTOM_TABLE_Y = 240 # y coord for the treatment table on the metadata panel
 
-
-# this defines different screen sizes, resizing is done by a callback funtion that triggers when the value of
+# this defines different screen sizes, resizing is done by a callback function that triggers when the value of
 # the StringVar storing the current mode changes.
 DISPLAY_MODES: dict[str, str] = {
     "analysis": "460x180",
@@ -42,15 +41,16 @@ DISPLAY_MODES: dict[str, str] = {
 }
 
 # this is used for selecting what message we want to display when the program has finished its work
+# 1st number: processing y/n, 2nd: summary y/n, 3rd: graphing y/n
 MESSAGES: dict[tuple[int, int, int], str] = {
     (0, 0, 0): "Please select at least one action to perform.",
     (1, 0, 0): "Finished processing data.",
-    (0, 1, 0): "Finished tabulating results.",
+    (0, 1, 0): "Finished summarizing results.",
     (0, 0, 1): "Finished making graphs.",
-    (1, 1, 0): "Finished processing data and tabulating results.",
+    (1, 1, 0): "Finished processing data and summarizing results.",
     (1, 0, 1): "Finished processing data and making graphs.",
-    (0, 1, 1): "Finished tabulating results and making graphs.",
-    (1, 1, 1): "Finished processing data, tabulating results, and making graphs."
+    (0, 1, 1): "Finished summarizing results and making graphs.",
+    (1, 1, 1): "Finished processing data, summarizing results, and making graphs."
 }
 
 # this is used to create new metadata if the user selects a folder without a metadata.toml file
@@ -78,7 +78,7 @@ class MainWindow:
         self.current_mode.trace_add("write", self.resize_window)
         self.root.resizable(False, True)
 
-        self.analyzer: AnalysisEngine
+        self.analyzer: AnalysisEngine # to be instantiated later
         self.converter = Converter(self.config.input.target_folder, self.config.output.report_name)
         
         self.checkbox_frame = tk.Frame()
@@ -125,6 +125,7 @@ class MainWindow:
         BW = 9 # button width in screen units
         BH = 2 # button height in screen units
 
+        # template for the 6 main buttons
         def main_button(**kwargs): return tk.Button(self.button_frame, width=BW, height=BH, font=FONT_M, **kwargs)
 
         ## Analyze button
@@ -171,13 +172,18 @@ class MainWindow:
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
 
     def analyze_button_press(self) -> None:
+        """Called when the analyze button is pressed, it checks if the input values are correct then calls the
+        analysis_work method in a new thread, which is responsible for creating and using the AnalysisEngine object,
+        calling the engine's relevant methods as dictated by the checkboxes in the GUI. The new thread is needed to keep
+        the GUI responsive, prevent a deadlock, and so that the progress tracker can be updated.
+        """
         data_path = self.config.input.target_folder
         if not data_path.exists():
             messagebox.showerror(message="Target folder not found.")
             return
         if not data_path.is_dir():
             messagebox.showerror(message="Target isn't a folder.")
-            return # this error should happen in the GUI version but I will leave this here just in case
+            return # these errors should not happen in the GUI version but I will leave this here just in case
 
         method = self.config.input.method
         if method not in ["baseline", "previous", "derivative"]:
