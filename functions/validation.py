@@ -132,7 +132,9 @@ def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
     except KeyError:
         errors += "\nConditions section missing or incorrectly named."
     try:
-        treatments = Treatments(metadata["treatments"])
+        treatments = Treatments()
+        for k, v in metadata["treatments"].items():
+            treatments[k] = v["begin"], v["end"]
         treatment_errors = validate_treatments(treatments)
         if not treatment_errors[0]:
             errors += "\nAll begin and end values must be integers."

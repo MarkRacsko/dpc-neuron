@@ -193,15 +193,12 @@ class MainWindow:
             "\nand \"derivative\".\n\nSee README.md")
             return
         
-        self.analyzer = AnalysisEngine(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
-        self.analyzer.create_caches()
+        previous_mode = self.current_mode.get()
+        self.current_mode.set("analysis")
+        self.button_frame.place(x=OFFSCREEN_X)
+        self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y, width=460, height=90)
 
-        error_list = self.analyzer.create_processor_instances()
-        for error_message in error_list: # if there was no error, nothing happens
-            messagebox.showerror(message=error_message)
-
-        proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
-        worker_thread = Thread(target=self.analysis_work, args=(proc, tab, graph))
+        worker_thread = Thread(target=self.analysis_work, args=(previous_mode,))
         worker_thread.start()
         # the processing work is put in a new thread so that the progress counter can be updated and displayed
 
@@ -230,19 +227,19 @@ class MainWindow:
         self.config_panel.place(x=OFFSCREEN_X)
         self.metadata_panel.place(x=0, y=PANEL_Y)
 
-    def analysis_work(self, proc: int, tab: int, graph: int) -> None:
+    def analysis_work(self, mode: str) -> None:
         """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
          display the progress indicator.)
-
-        Args:
-            proc (int): The value of the "Process" checkbox. (1 or 0)
-            tab (int): The value of the "Tabulate" checkbox. (1 or 0)
-            graph (int): The value of the "Make graphs" checkbox. (1 or 0)
         """
-        previous_mode = self.current_mode.get()
-        self.current_mode.set("analysis")
-        self.button_frame.place(x=OFFSCREEN_X)
-        self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y)
+
+        self.analyzer = AnalysisEngine(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
+        self.analyzer.create_caches()
+
+        error_list = self.analyzer.create_processor_instances()
+        for error_message in error_list: # if there was no error, nothing happens
+            messagebox.showerror(message=error_message)
+        
+        proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
 
         error_list = []
         if proc:
@@ -256,7 +253,7 @@ class MainWindow:
 
         messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])
 
-        self.current_mode.set(previous_mode)
+        self.current_mode.set(mode)
         self.tracker_frame.place(x=OFFSCREEN_X)
         self.button_frame.place(x=BASE_X, y=MAIN_BUTTON_Y)
     
