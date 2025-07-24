@@ -231,7 +231,7 @@ class MainWindow:
         """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
          display the progress indicator.)
         """
-
+        self.in_progress_label.config(text="Converting files...")
         self.analyzer = AnalysisEngine(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
         self.analyzer.create_caches()
 
@@ -243,12 +243,15 @@ class MainWindow:
 
         error_list = []
         if proc:
+            self.in_progress_label.config(text="Analyzing...")
             self.analyzer.process_data(error_list)
             for error in error_list:
                 messagebox.showerror(message=error) # if the list is empty, nothing will happen
         if tab:
+            self.in_progress_label.config(text="Working on summary...")
             self.analyzer.summarize_results()
         if graph:
+            self.in_progress_label.config(text="Drawing graphs...")
             self.analyzer.graph_data()
 
         messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])

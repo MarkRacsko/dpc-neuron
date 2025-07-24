@@ -46,12 +46,16 @@ class Converter:
                 measurement_files = [Path(f.name) for f in folder.glob("*.xlsx") if f != report_path]
                 if not cache_path.exists():
                     Path.mkdir(cache_path)
-                threads.append(Thread(target=work, args=(folder, cache_path, measurement_files)))
+                    threads.append(Thread(target=work, args=(folder, cache_path, measurement_files)))
         
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
+        if threads: # at least one cache needs to be created
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+        with self.lock:
+            finished_files.set(0)
 
     def convert_to_excel(self, finished_files: IntVar):
         """Converts the cached .feather files back into Excel, overwriting the original files.
@@ -99,6 +103,9 @@ class Converter:
             thread.start()
         for thread in threads:
             thread.join()
+
+        with self.lock:
+            finished_files.set(0)
 
     def purge_cache(self):
         for folder in self.target_folder.iterdir():
