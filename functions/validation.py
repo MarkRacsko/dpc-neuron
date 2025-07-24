@@ -122,11 +122,18 @@ def validate_metadata(folder: str, metadata: dict[str, dict[str, Any]]) -> str:
     starting_len: int = len(errors)
     try:
         conditions = metadata["conditions"]
-        try:
+        if "ratiometric_dye" not in conditions:
+            errors += "\nratiometric_dye key missing or renamed."
+        else:
             if conditions["ratiometric_dye"].lower() not in {"true", "false"}:
                 errors += '\nratiometric_dye value incorrect. Supported values are "true" and "false".'
-        except KeyError:
-            errors += "\nratiometric_dye key missing or renamed."
+        if "framerate" not in conditions:
+            errors += "\nframerate key missing or renamed."
+        else:
+            try:
+                int(conditions["framerate"])
+            except ValueError:
+                errors += "\nFrames/min value must be an integer number."
         if "group1" not in conditions or "group2" not in conditions:
             errors += '\nGroup key names changed or missing. Correct values are "group1" and "group2".'
     except KeyError:

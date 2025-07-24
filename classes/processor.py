@@ -174,8 +174,9 @@ class DataProcessor:
             each agonist used.
             save_dir (Path): The newly created directory where the graphs are supposed to be saved.
         """
+        frames_per_min = self.conditions.framerate
         majors = [x for x in range(0, len(x_data) + 1, 60)]
-        major_labels = [str(x//60) for x in majors]
+        major_labels = [str(x//frames_per_min) for x in majors]
         max_t = len(x_data) # the unit of time here is number of frames, the purpose of this is so that we don't draw
         # the second vertical line for the last slice
 

@@ -27,10 +27,10 @@ PANEL_Y = 220 # used for placing the config and metadata editor panels
 CONF_SECTION_1_BASE_Y = 20 # first section of the config editor panel
 CONF_SECTION_2_BASE_Y = 180 # second section of the config editor panel
 META_SECTION_1_BASE_Y = 70 # first section of the metadata editor panel
-META_SECTION_2_BASE_Y = 200 # second second of the metadata editor panel
+META_SECTION_2_BASE_Y = 230 # second second of the metadata editor panel
 EDITOR_PADDING_X = 200 # BASE_X + this is the x coord for items in the second column of the editor panels
 OFFSCREEN_X = 500 # this is used to move unwanted items offscreen
-BOTTOM_TABLE_Y = 240 # y coord for the treatment table on the metadata panel
+BOTTOM_TABLE_Y = 270 # y coord for the treatment table on the metadata panel
 
 # this defines different screen sizes, resizing is done by a callback function that triggers when the value of
 # the StringVar storing the current mode changes.
@@ -427,19 +427,25 @@ class MetadataFrame(tk.Frame):
         self.dye_button = tk.Button(self, text=f"{self.metadata.conditions.ratiometric_dye.capitalize()}", font=FONT_M, command=self.ratiometric_switch)
         self.dye_button.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + PADDING_Y, width=102, height=35)
 
+        # Framerate
+        self.framerate_label = tk.Label(self, text="Frames/min", font=FONT_M)
+        self.framerate_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.framerate_entry = int_entry(self)
+        self.framerate_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
+
         # Group1
         self.group1_label = tk.Label(self, text="Group 1:", font=FONT_M)
-        self.group1_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 2 * PADDING_Y)
+        self.group1_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 3 * PADDING_Y)
         self.group1_entry = str_entry(self)
         self.group1_entry.delete(0, tk.END)
         self.group1_entry.insert(0, self.metadata.conditions.group1)
-        self.group1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
+        self.group1_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
 
         # Group2
         self.group2_label = tk.Label(self, text="Group 2:", font=FONT_M)
-        self.group2_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 3 * PADDING_Y)
+        self.group2_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 4 * PADDING_Y)
         self.group2_entry = str_entry(self)
-        self.group2_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 3 * PADDING_Y)
+        self.group2_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 4 * PADDING_Y)
         self.group2_entry.delete(0, tk.END)
         self.group2_entry.insert(0, self.metadata.conditions.group2)
 
@@ -484,18 +490,29 @@ class MetadataFrame(tk.Frame):
         validates that these values are correct, displaying an error message if any mistakes are found. If not mistakes
         are found, it saves the metadata as metadata.toml in the selected folder.
         """
-        self.metadata.conditions.ratiometric_dye = self.dye_button["text"]
-        self.metadata.conditions.group1 = self.group1_entry.get()
-        self.metadata.conditions.group2 = self.group2_entry.get()
-        self.treatment_table.save_values()
+        error_message = ""
+        try:
+            FPM = int(self.framerate_entry.get())
+        except ValueError:
+            error_message += "Frames/min must be an integer number.\n"
         self.metadata.treatments = self.treatment_table.treatments
-
         try:
             self.metadata.treatments.remove_empty_values()
         except ValueError:
-            messagebox.showerror(message="Please make sure all intended begin and end fields are filled.")
-            return # this error partially overlaps with what validate_treatments check for, but I think it is different
-                   # enough to deserve to be handled separately
+            error_message += "Please make sure all intended begin and end fields are filled."
+        # this error partially overlaps with what validate_treatments check for, but I think it is different
+        # enough to deserve to be handled separately
+        
+        if error_message:
+            messagebox.showerror(message=error_message)
+            return
+        
+        self.metadata.conditions.ratiometric_dye = self.dye_button["text"]
+        self.metadata.conditions.framerate = FPM # type: ignore
+        self.metadata.conditions.group1 = self.group1_entry.get()
+        self.metadata.conditions.group2 = self.group2_entry.get()
+        self.treatment_table.save_values()
+
 
         passed_tests: list[bool] = validate_treatments(self.metadata.treatments)
         error_message = "Please make sure that:"
