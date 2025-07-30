@@ -1,7 +1,8 @@
-from functions.validation import validate_config, validate_metadata, validate_treatments
-from classes.toml_data import Metadata
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
+
+from classes.toml_data import Metadata
+from functions.validation import validate_config, validate_metadata, validate_treatments
 
 # this is a dict because the validate_config function works on dicts not my Config class
 good_config = {

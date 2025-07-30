@@ -1,15 +1,17 @@
-import numpy as np
-import pandas as pd
-import toml
 from pathlib import Path
-from matplotlib.figure import Figure
-from typing import Optional
 from threading import Lock
 from tkinter import IntVar
-from functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
-from functions.validation import validate_metadata
+from typing import Optional
+
+import numpy as np
+from matplotlib.figure import Figure
+import pandas as pd
+import toml
+
 from .converter import NAME_SHEET_SEP
 from .toml_data import Metadata, Conditions
+from functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
+from functions.validation import validate_metadata
 
 class DataProcessor:
     _error_lock = Lock()

@@ -1,9 +1,10 @@
-import pandas as pd
-import python_calamine as cala
 from pathlib import Path
+from shutil import rmtree
 from threading import Lock, Thread
 from tkinter import IntVar
-from shutil import rmtree
+
+import pandas as pd
+import python_calamine as cala
 
 NAME_SHEET_SEP: str = " SHEET_"
 CACHE_NAME = ".cache"

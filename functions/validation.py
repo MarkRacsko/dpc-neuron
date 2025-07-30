@@ -1,6 +1,7 @@
 from numbers import Rational
 from pathlib import Path
 from typing import Any
+
 from classes.toml_data import Treatments
 
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
 import math
-import pandas as pd
-import numpy as np
+
 from numba import njit
+import numpy as np
+import pandas as pd
 
 
 def normalize(array: np.ndarray, baseline: int) -> np.ndarray:

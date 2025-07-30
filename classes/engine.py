@@ -1,13 +1,17 @@
-import pandas as pd
 from pathlib import Path
-from .converter import Converter
-from .processor import DataProcessor
-from .toml_data import Config
 from threading import Thread
 from tkinter import IntVar
 
-type ExperimentalCondition = list[str]
-type ExperimentalData = tuple[str, pd.Series[int]]
+import pandas as pd
+
+from .converter import Converter
+from .processor import DataProcessor
+from .toml_data import Config
+
+type ExperimentalCondition = list[str] # list of agonists used in this particular experiment
+type ExperimentalData = tuple[str, pd.Series[int]] # the string is the folder name where the experiment's data is;
+# the pd.Series is multi-indexed, by the reaction column names and shows how many cells belong to a given combination
+# of reactions (such as TRPM3+ TRPA1- TRPV1- neurons)
 
 class AnalysisEngine:
     """Orchestrates data processing and presents a simpler interface to main.

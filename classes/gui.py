@@ -1,16 +1,15 @@
-import toml
+from itertools import cycle
+from pathlib import Path
+from threading import Thread
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 
-from itertools import cycle
-from pathlib import Path
-from threading import Thread
+import toml
 
 from .engine import AnalysisEngine
 from .converter import Converter
 from .toml_data import Config, Metadata, Treatments
-
 from functions.gui_utilities import int_entry, str_entry
 from functions.validation import validate_config, validate_treatments
 
