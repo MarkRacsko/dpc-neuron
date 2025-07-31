@@ -56,6 +56,7 @@ MESSAGES: dict[tuple[int, int, int], str] = {
 METADATA_TEMPLATE = {
     "conditions": {
         "ratiometric_dye": "true",
+        "framerate": 60,
         "group1": "",
         "group2": ""
     },
