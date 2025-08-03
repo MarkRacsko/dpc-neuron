@@ -25,6 +25,8 @@ class Config:
         result = {}
 
         result["input"] = asdict(self.input)
+        path_as_str = str(result["input"]["target_folder"])
+        result["input"]["target_folder"] = path_as_str
         result["output"] = asdict(self.output)
 
         return result
@@ -60,7 +62,7 @@ class Metadata:
         result = {}
 
         result["conditions"] = asdict(self.conditions)
-        treatments = self.treatments.treatment_dict
+        treatments = asdict(self.treatments)
         result["treatments"] = treatments["treatment_dict"]
         # this is so the metadata file will end up with the correct structure
 

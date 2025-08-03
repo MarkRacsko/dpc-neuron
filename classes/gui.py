@@ -395,6 +395,8 @@ class ConfigFrame(tk.Frame):
         with open(Path("./config.toml"), "w") as f:
             toml.dump(config_as_dict, f)
 
+        messagebox.showinfo(message="Configuration saved!")
+
 
 class MetadataFrame(tk.Frame):
     """Displayed in Metadata Editor mode. Will be moved offscreen when the program switches to a different mode.
