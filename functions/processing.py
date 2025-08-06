@@ -79,14 +79,14 @@ def baseline_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
         sd_mult (int): Determines by how many standard deviations must a cell's response exceed the baseline mean to be
         considered positive for any given agonist.
     """
-    baseline_means = cell_data[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
-    baseline_stdevs = cell_data[agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
-    thresholds = baseline_means + sd_mult*baseline_stdevs
+    baseline_means = cell_data[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
+    baseline_stdevs = cell_data[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=False)
+    thresholds = baseline_means.flatten() + sd_mult*baseline_stdevs
     
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        maximums = cell_data[time_window].max(axis=1, keepdims=True)
+        maximums = cell_data[:,time_window].max(axis=1, keepdims=True)
         amplitudes = maximums - baseline_means.flatten()
         reactions = np.where(maximums > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions
@@ -106,12 +106,12 @@ def previous_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
         values in the previous agonist's time window to be considered positive for any given agonist.
     """
     baseline_means = cell_data[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
-    baseline_stdevs = cell_data[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=True)
+    baseline_stdevs = cell_data[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_means, keepdims=False)
 
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        thresholds = cell_data[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs.flatten()
+        thresholds = cell_data[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs
         maximums = cell_data[:,time_window].max(axis=1, keepdims=False)
         amplitudes = maximums - baseline_means.flatten()
         # using amplitudes to determine reactions is wrong because of the baseline substraction
@@ -135,15 +135,15 @@ def derivate_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
         baseline's first derivative to be considered positive for any given agonist.
     """
     derivs = np.gradient(cell_data, axis=1)
-    baseline_deriv_means = derivs[agonist_slices["baseline"]].mean(axis=1, keepdims=True)
-    baseline_deriv_stdevs = derivs[agonist_slices["baseline"]].std(axis=1, mean=baseline_deriv_means, keepdims=True)
-    thresholds = baseline_deriv_means + sd_mult*baseline_deriv_stdevs.flatten()
+    baseline_deriv_means = derivs[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
+    baseline_deriv_stdevs = derivs[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_deriv_means, keepdims=False)
+    thresholds = baseline_deriv_means.flatten() + sd_mult*baseline_deriv_stdevs
     
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        amplitudes = cell_data[time_window].max(axis=1, keepdims=True) - baseline_deriv_means.flatten()
-        maximum_derivs = derivs[time_window].max(axis=1, keepdims=False)
+        amplitudes = cell_data[:,time_window].max(axis=1, keepdims=True) - baseline_deriv_means.flatten()
+        maximum_derivs = derivs[:,time_window].max(axis=1, keepdims=False)
         reactions = np.where(maximum_derivs > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions.flatten()
         file_result[agonist + "_amp"] = amplitudes.flatten()

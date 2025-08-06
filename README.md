@@ -59,6 +59,3 @@ Note: The reason an agonist's end value and the next agonist's begin value **can
 
 ## The cache
 Reading Excel files into pandas DataFrames is dreadfully slow, so I've implemented a caching mechanism to convert Excel files to a more performant file format, and work with those. When the program first encounters a measurement (= a subfolder in the target folder), it reads all measurement files there and converts them into this faster format, storing them in a .cache folder. Do not touch this folder, unless you want to force the program to re-read the excel files, in which case you should delete the .cache folder, for which there is a button in the graphical user interface. (In case you've added or replaced some measurement files. The program does not individually track which files have been cached.)
-
-TODO:
-- investigate problem with derivative method

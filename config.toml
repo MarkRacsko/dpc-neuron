@@ -1,5 +1,5 @@
 [input]
-target_folder = "./data"
+target_folder = "data"
 method = "previous"
 SD_multiplier = 2
 smoothing_range = 5
