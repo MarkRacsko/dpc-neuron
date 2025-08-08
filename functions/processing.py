@@ -86,7 +86,7 @@ def baseline_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        maximums = cell_data[:,time_window].max(axis=1, keepdims=True)
+        maximums = cell_data[:,time_window].max(axis=1, keepdims=False)
         amplitudes = maximums - baseline_means.flatten()
         reactions = np.where(maximums > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions
@@ -142,7 +142,7 @@ def derivate_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        amplitudes = cell_data[:,time_window].max(axis=1, keepdims=True) - baseline_deriv_means.flatten()
+        amplitudes = cell_data[:,time_window].max(axis=1, keepdims=False) - baseline_deriv_means.flatten()
         maximum_derivs = derivs[:,time_window].max(axis=1, keepdims=False)
         reactions = np.where(maximum_derivs > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions.flatten()
