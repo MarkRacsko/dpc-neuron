@@ -492,6 +492,9 @@ class MetadataFrame(tk.Frame):
         validates that these values are correct, displaying an error message if any mistakes are found. If not mistakes
         are found, it saves the metadata as metadata.toml in the selected folder.
         """
+
+        self.treatment_table.save_values() # this needs to happen first so that the correct treatments are used later
+
         error_message = ""
         try:
             FPM = int(self.framerate_entry.get())
@@ -513,8 +516,6 @@ class MetadataFrame(tk.Frame):
         self.metadata.conditions.framerate = FPM # type: ignore
         self.metadata.conditions.group1 = self.group1_entry.get()
         self.metadata.conditions.group2 = self.group2_entry.get()
-        self.treatment_table.save_values()
-
 
         passed_tests: list[bool] = validate_treatments(self.metadata.treatments)
         error_message = "Please make sure that:"
