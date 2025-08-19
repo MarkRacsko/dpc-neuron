@@ -22,21 +22,23 @@ BASE_Y = 20
 PADDING_Y = 30
 PADDING_X = 120
 MAIN_BUTTON_Y = 90 # used for placing the frame containing the main 6 buttons and alternatively the progress tracker
-PANEL_Y = 220 # used for placing the config and metadata editor panels
+PANEL_Y = 230 # used for placing the config and metadata editor panels
+PANEL_W = 480 # width of the editor panels
+METADATA_SELECT_W = 480
 CONF_SECTION_1_BASE_Y = 20 # first section of the config editor panel
 CONF_SECTION_2_BASE_Y = 180 # second section of the config editor panel
 META_SECTION_1_BASE_Y = 70 # first section of the metadata editor panel
 META_SECTION_2_BASE_Y = 230 # second second of the metadata editor panel
 EDITOR_PADDING_X = 200 # BASE_X + this is the x coord for items in the second column of the editor panels
-OFFSCREEN_X = 500 # this is used to move unwanted items offscreen
+OFFSCREEN_X = 600 # this is used to move unwanted items offscreen
 BOTTOM_TABLE_Y = 270 # y coord for the treatment table on the metadata panel
 
 # this defines different screen sizes, resizing is done by a callback function that triggers when the value of
 # the StringVar storing the current mode changes.
 DISPLAY_MODES: dict[str, str] = {
-    "analysis": "460x180",
-    "config": "460x550",
-    "metadata": "460x800"
+    "analysis": "500x180",
+    "config": "500x550",
+    "metadata": "500x800"
 }
 
 # this is used for selecting what message we want to display when the program has finished its work
@@ -154,10 +156,10 @@ class MainWindow:
 
         self.root.update_idletasks()
         # Config editor panel
-        self.config_panel = ConfigFrame(self.root, self.config, self.config_button.winfo_width(), width=460, height=320)
+        self.config_panel = ConfigFrame(self.root, self.config, self.config_button.winfo_width(), width=PANEL_W, height=320)
 
         # Metadata editor panel
-        self.metadata_panel = MetadataFrame(self.root, self.metadata_button.winfo_width(), self.metadata_button.winfo_height(), width=460, height=640)
+        self.metadata_panel = MetadataFrame(self.root, self.metadata_button.winfo_width(), self.metadata_button.winfo_height(), width=PANEL_W, height=640)
     
         self.root.update_idletasks()
         # this line is here and not at the beginning so that the window won't jump around:
@@ -413,9 +415,9 @@ class MetadataFrame(tk.Frame):
         Updates this Frame with the correct metadata information. The reason these things are here and not in __init__
         is that this is how we can update the displayed information after the object is instantiated with dummy values.
         """
-        # Folder selector button
+        # Folder selector button 3*self.browse_button_width + 40
         self.metabata_browse_button = tk.Button(self, text="Select folder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
-        self.metabata_browse_button.place(x=BASE_X, y=10, width=3*self.browse_button_width, height=self.browse_button_height/1.5)
+        self.metabata_browse_button.place(x=BASE_X, y=10, width=METADATA_SELECT_W, height=self.browse_button_height/1.5)
         if not self.selected_folder.get():
             self.select_measurement_folder_and_load_metadata()
         
@@ -457,7 +459,7 @@ class MetadataFrame(tk.Frame):
 
         self.update_idletasks()
         self.treatment_table = TreatmentTable(self, self.metadata.treatments, width=440, height=490)
-        self.treatment_table.place(x=BASE_X + 40, y=BOTTOM_TABLE_Y)
+        self.treatment_table.place(x=BASE_X + 60, y=BOTTOM_TABLE_Y)
         
         self.save_metadata_button = tk.Button(self, text="Save Metadata", font=FONT_M, command=self.save_metadata)
         self.save_metadata_button.place(x=230, y=META_SECTION_2_BASE_Y + 40)
