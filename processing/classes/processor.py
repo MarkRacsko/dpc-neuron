@@ -10,8 +10,8 @@ import toml
 
 from .converter import NAME_SHEET_SEP
 from .toml_data import Metadata, Conditions
-from functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
-from functions.validation import validate_metadata
+from ..functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
+from ..functions.validation import validate_metadata
 
 class DataProcessor:
     _error_lock = Lock()
