@@ -9,7 +9,7 @@ PADDING_X = 120
 MAIN_BUTTON_Y = 90 # used for placing the frame containing the main 6 buttons and alternatively the progress tracker
 PANEL_Y = 230 # used for placing the config and metadata editor panels
 PANEL_W = 480 # width of the editor panels
-METADATA_SELECT_W = 480
+
 CONF_SECTION_1_BASE_Y = 20 # first section of the config editor panel
 CONF_SECTION_2_BASE_Y = 180 # second section of the config editor panel
 META_SECTION_1_BASE_Y = 70 # first section of the metadata editor panel

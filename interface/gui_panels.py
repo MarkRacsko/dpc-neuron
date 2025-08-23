@@ -8,7 +8,7 @@ import toml
 from interface.gui_constants import FONT_M, FONT_L
 from interface.gui_constants import BASE_X, PADDING_X, PADDING_Y, EDITOR_PADDING_X
 from interface.gui_constants import CONF_SECTION_1_BASE_Y, CONF_SECTION_2_BASE_Y
-from interface.gui_constants import META_SECTION_1_BASE_Y, META_SECTION_2_BASE_Y, METADATA_SELECT_W, BOTTOM_TABLE_Y
+from interface.gui_constants import META_SECTION_1_BASE_Y, META_SECTION_2_BASE_Y, BOTTOM_TABLE_Y
 from interface.gui_constants import METADATA_TEMPLATE
 
 from interface.gui_utilities import int_entry, str_entry
@@ -197,8 +197,17 @@ class MetadataFrame(tk.Frame):
         is that this is how we can update the displayed information after the object is instantiated with dummy values.
         """
         # Folder selector button 3*self.browse_button_width + 40
-        self.metabata_browse_button = tk.Button(self, text="Select folder", font=FONT_M, command=self.select_measurement_folder_and_load_metadata)
-        self.metabata_browse_button.place(x=BASE_X, y=10, width=METADATA_SELECT_W, height=self.browse_button_height/1.5)
+        self.button_frame = tk.Frame(master=self)
+        self.button_frame.place(x=BASE_X + 70, y=10)
+
+        def panel_button(**kwargs): return tk.Button(self.button_frame, width=9, height=1, font=FONT_M, **kwargs)
+
+        self.metabata_browse_button = panel_button(text="Select folder", command=self.select_measurement_folder_and_load_metadata)
+        self.metabata_browse_button.grid(row=0, column=0, sticky="news")
+
+        self.metadata_clear_button = panel_button(text="Clear data", command=self.clear_button_press)
+        self.metadata_clear_button.grid(row=0, column=1, sticky="news")
+
         if not self.selected_folder.get():
             self.select_measurement_folder_and_load_metadata()
 
@@ -216,6 +225,8 @@ class MetadataFrame(tk.Frame):
         self.framerate_label = tk.Label(self, text="Frames/min", font=FONT_M)
         self.framerate_label.place(x=BASE_X, y=META_SECTION_1_BASE_Y + 2 * PADDING_Y)
         self.framerate_entry = int_entry(self)
+        self.framerate_entry.delete(0, tk.END)
+        self.framerate_entry.insert(0, str(self.metadata.conditions.framerate))
         self.framerate_entry.place(x=BASE_X + EDITOR_PADDING_X, y=META_SECTION_1_BASE_Y + 10 + 2 * PADDING_Y)
 
         # Group1
@@ -244,6 +255,20 @@ class MetadataFrame(tk.Frame):
 
         self.save_metadata_button = tk.Button(self, text="Save Metadata", font=FONT_M, command=self.save_metadata)
         self.save_metadata_button.place(x=230, y=META_SECTION_2_BASE_Y + 40)
+
+    def clear_button_press(self) -> None:
+        self.metadata = Metadata(METADATA_TEMPLATE)
+
+        self.dye_button.config(text=f"{self.metadata.conditions.ratiometric_dye.capitalize()}")
+        self.framerate_entry.delete(0, tk.END)
+        self.framerate_entry.insert(0, str(self.metadata.conditions.framerate))
+        self.group1_entry.delete(0, tk.END)
+        self.group1_entry.insert(0, self.metadata.conditions.group1)
+        self.group2_entry.delete(0, tk.END)
+        self.group2_entry.insert(0, self.metadata.conditions.group2)
+
+        self.treatment_table = TreatmentTable(self, self.metadata.treatments, width=440, height=490)
+        self.treatment_table.place(x=BASE_X + 60, y=BOTTOM_TABLE_Y)
 
     def ratiometric_switch(self) -> None:
         """Toggles what to display on the button for the ratiometric dye value.
