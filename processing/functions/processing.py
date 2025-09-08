@@ -111,9 +111,10 @@ def previous_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
     for agonist, time_window in agonist_slices.items():
         if agonist == "baseline":
             continue
-        thresholds = cell_data[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False) + sd_mult*baseline_stdevs
+        prev_means = cell_data[:,time_window.start - 10:time_window.start].mean(axis=1, keepdims=False)
+        thresholds = prev_means + sd_mult*baseline_stdevs
         maximums = cell_data[:,time_window].max(axis=1, keepdims=False)
-        amplitudes = maximums - baseline_means.flatten()
+        amplitudes = maximums - prev_means.flatten()
         # using amplitudes to determine reactions is wrong because of the baseline substraction
         # (only cells where the max is larger than the threshold by at least the value of the baseline mean would be 
         # considered to have reacted)
