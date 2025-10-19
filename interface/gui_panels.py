@@ -16,9 +16,6 @@ from processing.classes.toml_data import Config, Metadata, Treatments
 from processing.functions.validation import validate_config, validate_treatments
 
 
-
-
-
 class ConfigFrame(tk.Frame):
     """Displayed in Config Editor mode. Will be moved offscreen when the program switches to a different mode.
     """
@@ -61,6 +58,12 @@ class ConfigFrame(tk.Frame):
         self.smoothing_entry.insert(0, str(self.config.input.smoothing_range))
         self.smoothing_entry.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 4 * PADDING_Y)
 
+        ## Photobleaching correction
+        self.correction_label = tk.Label(self, text="Photobleach corr.:", font=FONT_M)
+        self.correction_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + 5 * PADDING_Y)
+        self.correction_button = tk.Button(self, text=f"{self.config.input.correction.capitalize()}", font=FONT_M, command=self.correction_switch)
+        self.correction_button.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 5 * PADDING_Y, width=102, height=35)
+
         # Output section
         self.output_label = tk.Label(self, text="Output section", font=FONT_L)
         self.output_label.place(x=BASE_X, y=CONF_SECTION_2_BASE_Y)
@@ -85,6 +88,16 @@ class ConfigFrame(tk.Frame):
         self.save_config_button = tk.Button(self, text="Save", font=FONT_L, command=self.save_config)
         self.save_config_button.place(x=BASE_X + 1.2 * PADDING_X, y=CONF_SECTION_2_BASE_Y + 10 + 3 * PADDING_Y, width=save_button_size, height=30)
 
+    def correction_switch(self) -> None:
+        """Toggles what to display on the button for the ratiometric dye value.
+        """
+        current_state = self.correction_button["text"]
+
+        if current_state == "True":
+            self.correction_button.config(text="False")
+        else:
+            self.correction_button.config(text="True")        
+
     def select_folder(self) -> None:
         """Called when pressing the button to select the target folder.
         """
@@ -99,6 +112,7 @@ class ConfigFrame(tk.Frame):
         self.config.input.method = self.selected_method.get()
         self.config.input.SD_multiplier = int(self.SD_multiplier_entry.get())
         self.config.input.smoothing_range = int(self.smoothing_entry.get())
+        self.config.input.correction = self.correction_button["text"]
         self.config.output.report_name = self.report_entry.get()
         self.config.output.summary_name = self.summary_entry.get()
 

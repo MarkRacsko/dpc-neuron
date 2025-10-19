@@ -58,18 +58,25 @@ class DataProcessor:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, finished_files: IntVar, error_list: list[str]) -> None:
+    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, corr: str, finished_files: IntVar, error_list: list[str]) -> None:
         """Encapsulates all data processing work needed to produce a report.
 
         Args:
-            method (str): the basis of comparison for determining if a cell reacted to an agonist, can be "baseline",
+              method (str): the basis of comparison for determining if a cell reacted to an agonist, can be "baseline",
             "previous", or "derivative". See the README for details.
-            sd_multiplier (int): how many standard deviations of difference from the basis is required to consider a
+
+              sd_multiplier (int): how many standard deviations of difference from the basis is required to consider a
             cell as positive for a given agonist.
-            smoothing_window (int): how many elements to average when smoothing the data.
-            finished_files (tk.IntVar): used to keep track of how many files we have finished processing, for the
+
+              smoothing_window (int): how many elements to average when smoothing the data.
+
+              corr (str): true or false, determines if photobleaching correction should be done. Not a boolean because 
+            writing the GUI config editor was easier this way.
+
+              finished_files (tk.IntVar): used to keep track of how many files we have finished processing, for the
             progress tracker in the GUI.
-            error_list (list[str]): a list of error messages to display, received from the AnalysisEngine overseeing the
+
+              error_list (list[str]): a list of error messages to display, received from the AnalysisEngine overseeing the
             processing work. If an error occurs, the corresponding message is appended to this list.
         """
         if not self.need_to_work:
@@ -86,9 +93,9 @@ class DataProcessor:
             file_result = pd.DataFrame(columns=output_columns)
             try:
                 if self.conditions.ratiometric_dye.lower() == "true":
-                    cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window)
+                    cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window, corr)
                 else:
-                    cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window)
+                    cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window, corr)
             except SyntaxError:
                 bad_sheet_files.append(file)
                 continue
@@ -217,7 +224,7 @@ class DataProcessor:
             self.report = pd.read_excel(self.report_path, sheet_name="Summary", engine="calamine")
             self.update_file_count(finished_files)
 
-    def prepare_ratiometric_data(self, file: Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
+    def prepare_ratiometric_data(self, file: Path, smoothing_window: int, corr: str) -> tuple[list[str], np.ndarray]:
         """Reads data from Fura2 measurements, then performs background substraction, smoothing, and photobleaching
         correction. Saves processed data to a .feather file as well as returning it.
 
@@ -251,20 +258,24 @@ class DataProcessor:
         cells_380 = np.apply_along_axis(smooth, 0, cells_380, window_size = smoothing_window)
 
         # photobleaching correction
-        matrix = np.hstack((np.ones_like(x_data), x_data))
-        coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
-        coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
-        coeffs_340, coeffs_380 = coeffs_340[1], coeffs_380[1] # we don't care about the y intercept
-        cells_340 = cells_340 - (x_data * coeffs_340)
-        cells_380 = cells_380 - (x_data * coeffs_380)
+        if corr.lower() == "true": # I know this looks stupid, see the docstring of the make_report method
+            matrix = np.hstack((np.ones_like(x_data), x_data))
+            coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
+            coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
+            coeffs_340, coeffs_380 = coeffs_340[1], coeffs_380[1] # we don't care about the y intercept
+            cells_340 = cells_340 - (x_data * coeffs_340)
+            cells_380 = cells_380 - (x_data * coeffs_380)
+            corr_arg = np.vstack((coeffs_340, coeffs_380))
+        else:
+            corr_arg = None
         
         # I'm working with Fura2 so the actual data of interest is the ratios between emissions at 340 and 380 nm.
         ratios = np.transpose(cells_340 / cells_380)
-        self.save_processed_data(file, x_data, ratios, cell_cols, np.vstack((coeffs_340, coeffs_380)))
+        self.save_processed_data(file, x_data, ratios, cell_cols, corr_arg)
 
         return cell_cols, ratios
     
-    def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int) -> tuple[list[str], np.ndarray]:
+    def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int, corr: str) -> tuple[list[str], np.ndarray]:
         """Reads data from measurements non-ratiometric dyes such as Fluo4, then performs background substraction,
         smoothing, and photobleaching correction. Saves processed data to a .feather file as well as returning it.
 
@@ -287,12 +298,16 @@ class DataProcessor:
         cells = np.apply_along_axis(smooth, 0, cells, window_size = smoothing_window)
         
         # photobleaching correction
-        matrix = np.hstack((np.ones_like(x_data), x_data))
-        coeffs, _, _, _ = np.linalg.lstsq(matrix, cells, rcond=None)
-        coeffs = coeffs[1] # we don't care about the y intercept
-        cells = cells - (x_data * coeffs)
+        if corr.lower() == "true": # I know this looks stupid, see the docstring of the make_report method
+            matrix = np.hstack((np.ones_like(x_data), x_data))
+            coeffs, _, _, _ = np.linalg.lstsq(matrix, cells, rcond=None)
+            coeffs = coeffs[1] # we don't care about the y intercept
+            cells = cells - (x_data * coeffs)
+            corr_arg = coeffs
+        else:
+            corr_arg = None
 
-        self.save_processed_data(file, x_data, cells, cell_cols, coeffs)
+        self.save_processed_data(file, x_data, cells, cell_cols, corr_arg)
         return cell_cols, cells.transpose()
 
     def update_file_count(self, count: IntVar):
@@ -304,7 +319,7 @@ class DataProcessor:
         with self._file_count_lock:
             count.set(count.get() + 1)
 
-    def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray) -> None:
+    def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray | None) -> None:
         """Saves processed Ca traces and photobleaching correction coefficients to .feather files in the cache.
 
         Args:
@@ -313,7 +328,8 @@ class DataProcessor:
             cell_data (np.ndarray): The measurement data after it has been transformed by the relevant data preparation
             method.
             col_names (list[str]): The names of columns in the Excel file where cell data is found.
-            coeffs (np.ndarray): The coefficients used for photobleaching correction.
+            coeffs (np.ndarray | None): The coefficients used for photobleaching correction. None if we are not doing
+            correction.
         """
         col_names = ["Time"] + col_names
         data = np.vstack((x_data.flatten(), cell_data))
@@ -326,19 +342,20 @@ class DataProcessor:
         
         df = pd.DataFrame(data, columns=col_names)
         df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet_name}.feather")
-
-        if ratio:
-            col_names[0] = "Wavelength"
-            first_col = np.array([340, 380])
-            first_col = first_col[:, np.newaxis]
-            coeffs = np.hstack((first_col, coeffs))
-            df = pd.DataFrame(coeffs, columns=col_names)
-            df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
-        else:
-            df = pd.DataFrame(coeffs, columns=col_names)
-            df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
-        # If we're not using a ratiometric dye, we only have one set of coefficients, but if we are using Fura, then we
-        # have two, and we should save which is which.
+        
+        if coeffs is not None:
+            if ratio:
+                col_names[0] = "Wavelength"
+                first_col = np.array([340, 380])
+                first_col = first_col[:, np.newaxis]
+                coeffs = np.hstack((first_col, coeffs))
+                df = pd.DataFrame(coeffs, columns=col_names)
+                df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
+            else:
+                df = pd.DataFrame(coeffs, columns=col_names)
+                df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
+            # If we're not using a ratiometric dye, we only have one set of coefficients, but if we are using Fura, then we
+            # have two, and we should save which is which.
 
     def save_report(self) -> None:
         assert self.report is not None # report is guaranteed not to be None by the time this method is called

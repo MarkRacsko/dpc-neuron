@@ -15,7 +15,8 @@ class Config:
         self.input = Input(Path(input_section["target_folder"]),
                         input_section["method"],
                         input_section["SD_multiplier"],
-                        input_section["smoothing_range"])
+                        input_section["smoothing_range"],
+                        input_section["correction"])
         
         output_section = config_as_dict["output"]
         self.output = Output(output_section["report_name"],
@@ -37,6 +38,7 @@ class Input:
     method: str
     SD_multiplier: int
     smoothing_range: int
+    correction: str
 
 @dataclass
 class Output:

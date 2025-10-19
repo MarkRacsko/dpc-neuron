@@ -44,6 +44,15 @@ def validate_config(config: dict[str, dict[str, Any]]) -> str:
         message += "\n- smoothing_range key missing from input section"
 
     try:
+        if not isinstance(config["input"]["correction"], str):
+            message += "\n- correction value must be a string."
+        else:
+            if config["input"]["correction"].lower() not in {"true", "false"}:
+                message += '\n- correction value incorrect. Supported values are "true" and "false".'
+    except KeyError:
+        message += "\n- correction key missing from input section"
+
+    try:
         if not isinstance(config["output"]["report_name"], str):
             message += "\n- report_name value must be a string"
     except KeyError:

@@ -3,6 +3,7 @@ target_folder = "/home/mark/Repositories/Python/Neuron/new_data"
 method = "previous"
 SD_multiplier = 3
 smoothing_range = 5
+correction = "False"
 
 [output]
 report_name = "report_"

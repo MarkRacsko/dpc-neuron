@@ -6,7 +6,7 @@ from tkinter import messagebox
 from interface.gui_panels import ConfigFrame, MetadataFrame
 from interface.gui_constants import FONT_M
 from interface.gui_constants import BASE_X, BASE_Y, PADDING_X, PADDING_Y, OFFSCREEN_X
-from interface.gui_constants import MAIN_BUTTON_Y, PANEL_W, PANEL_Y
+from interface.gui_constants import MAIN_BUTTON_Y, PANEL_W, CONFIG_H, META_H, PANEL_Y
 from interface.gui_constants import DISPLAY_MODES, MESSAGES
 
 from processing.classes.engine import AnalysisEngine
@@ -100,10 +100,10 @@ class MainWindow:
 
         self.root.update_idletasks()
         # Config editor panel
-        self.config_panel = ConfigFrame(self.root, self.config, self.config_button.winfo_width(), width=PANEL_W, height=320)
+        self.config_panel = ConfigFrame(self.root, self.config, self.config_button.winfo_width(), width=PANEL_W, height=CONFIG_H)
 
         # Metadata editor panel
-        self.metadata_panel = MetadataFrame(self.root, self.metadata_button.winfo_width(), self.metadata_button.winfo_height(), width=PANEL_W, height=640)
+        self.metadata_panel = MetadataFrame(self.root, self.metadata_button.winfo_width(), self.metadata_button.winfo_height(), width=PANEL_W, height=META_H)
     
         self.root.update_idletasks()
         # this line is here and not at the beginning so that the window won't jump around:
