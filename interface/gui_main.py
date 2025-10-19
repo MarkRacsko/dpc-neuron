@@ -231,6 +231,7 @@ class MainWindow:
         self.current_mode.set("analysis")
         self.button_frame.place(x=OFFSCREEN_X)
         self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y, width=460, height=230)
+        self.in_progress_label.config(text="Converting...")
 
         if target == "feather":
             self.converter.convert_to_feather(self.finished_file_counter)
