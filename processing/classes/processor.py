@@ -28,7 +28,7 @@ class DataProcessor:
         self.conditions: Conditions
         self.measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
 
-    def preprocessing(self, repeat: bool, finished_files: IntVar) -> str | None:
+    def preprocessing(self, repeat: bool) -> str | None:
         if self.report_path.exists() and not repeat:
             self.need_to_work = False
 

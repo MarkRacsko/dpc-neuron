@@ -39,7 +39,7 @@ class AnalysisEngine:
         for path in self.config.input.target_folder.iterdir():
             if path.is_dir():
                 instance = DataProcessor(path, self.config.output.report_name)
-                error = instance.preprocessing(self.repeat, self.finished_files)
+                error = instance.preprocessing(self.repeat)
                 if error is not None:
                     errors.append(error)
                 self._processors.append(instance)
