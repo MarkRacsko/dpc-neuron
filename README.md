@@ -18,15 +18,15 @@ To run the program, type `uv run main.py` into the command prompt opened from th
 The program takes a folder as its input and expects data from individual measurements to be grouped into subfolders within this folder. (All data from one day of experiments goes in one subfolder for me, but this is not mandatory, only the structure is.) Experimental conditions are described by a metadata.toml file that must be present in every subfolder to be processed. Processing configurations are set by a config.toml file, located in the same folder as this README and the Python files. The expected contents of these files are described further below.
 
 ## The graphical interface
-The program exists in two versions, a command line only one (main.py) and one with a graphical interface (main-gui.py). The graphical version performs the same analysis tasks and has checkboxes that correspond to the CLI version's command line flags, namely:
+The program exists in two versions, a command line only one (main_CLI.py) and one with a graphical interface (main.py). The graphical version performs the same analysis tasks and has checkboxes that correspond to the CLI version's command line flags, namely:
 - Process: to do data processing and create reports
-- Tabulate: to summarize all existing reports
+- Summarize: to summarize all existing reports
 - Make graphs: to draw line plots for each cell
 - Repeat: normally the program ignores folders that already have a report file in them, this option tells it to process everything anyway.
 
-The GUI version also comes with an editor for the program's config file and the experiment metadata files. The use of these should be fairly straightforward, the only catch is that the metadata editor **does NOT preserve unsaved changes** to its fields if you switch over to the config editor. (The original contents of the loaded metadata file is preserved though.) If you select a folder without a metadata file, the program will create a blank one from a template, or alternatively you can copy an existing metadata file (or the sample) to new folders. If you copy the sample, make sure to rename it to "metadata.toml" as both the editor and the analyzer expect this exact file name. Of course this toml file can also be edited manually, as detailed below.
+The GUI version also comes with an editor for the program's config file and the experiment metadata files. The use of these should be fairly straightforward, the only catch is that the metadata editor **does NOT preserve unsaved changes** to its fields if you switch over to the config editor. (The original contents of the loaded metadata file are preserved though.) If you select a folder without a metadata file, the program will create a blank one from a template, or alternatively you can copy an existing metadata file (or the sample) to new folders. If you copy the sample, make sure to rename it to "metadata.toml" as both the editor and the analyzer expect this exact file name. Of course this toml file can also be edited manually, as detailed below.
 
-The bottom row of buttons allows you to convert Excel files to and from the cache (explained further below), or delete the existing one. (Which is necessary if you've changed the Excel files in any folder. If you've merely added new files in one or more new folders, emptying the cache is not necessary.) If you've added new folders with measurements in them, manually pressing the "Convert to cache" button is not actually needed, the program will automatically perform this conversion when necessary.
+The bottom row of the 6 main buttons allows you to convert Excel files to and from the cache (explained further below), or delete the existing one. (Which is necessary if you've changed the Excel files in any folder, or added new ones.) If you've added new folders with measurements in them, manually pressing the "Convert to cache" button is not actually needed, the program will automatically perform this conversion when necessary.
 
 ## How to use the .toml files
 Tom's Obvious, Minimal Language (toml) is a simple file format for configuration files, editable by any text editor such as Windows Notepad. A toml file is (can be) divided into sections, each of which can have their own subsections. Subsections may be indented for the sake of clarity, but this is not required. Sections are delineated by their name in square brackets, like this: [section_name], while subsections are marked by [section_name.subsection_name]. The actual configuration data is stored as key-value pairs, like this:
@@ -46,12 +46,13 @@ This file consists of 2 sections:
     - amp_threshold: A floating point (decimal) number, used in classifying cells (neurons vs non-neurons). If the amplitude of a cell's response to the positive control (50 mM KCl) is larger than this, the cell is a neuron.
     - cv_threshold:  Also a floating point (decimal) number, used in classifying cells (neurons vs non-neurons). CV stands for coefficient of variance, which is standard deviation divided by the mean. Used similarly as the amp_threshold, it was chosen because this is another metric where there is a very clear distinction between neurons and non-neurons.
     - correction: "True" or "False". Do we use photobleaching correction or not.
+
 - output:
     - report_name: The final file name for subfolder level reports will be constructed from this name, the name of this subfolder, and the .xlsx extension.
     - summary_name: The final file name for the overall summary report.
 
 ### The metadata files
-These have 2 section:
+These have 2 sections:
 - conditions:
     - ratiometric_dye: "true" if you're using Fura2 and "false" otherwise.
     - group1 and group2: These describe the experimental groups to be compared. Can be any string values, make sure to put them in quotation marks. Also these group names must be present in the individual file names as the actual grouping is done by checking which group name the file name contains.
