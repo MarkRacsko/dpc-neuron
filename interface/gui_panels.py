@@ -128,8 +128,8 @@ class ConfigFrame(tk.Frame):
         self.config.input.method = self.selected_method.get()
         self.config.input.SD_multiplier = int(self.SD_multiplier_entry.get())
         self.config.input.smoothing_range = int(self.smoothing_entry.get())
-        self.config.input.amp_threshold = int(self.amp_threshold_entry.get())
-        self.config.input.cv_threshold = int(self.cv_threshold_entry.get())
+        self.config.input.amp_threshold = float(self.amp_threshold_entry.get())
+        self.config.input.cv_threshold = float(self.cv_threshold_entry.get())
         self.config.input.correction = self.correction_button["text"]
         self.config.output.report_name = self.report_entry.get()
         self.config.output.summary_name = self.summary_entry.get()
