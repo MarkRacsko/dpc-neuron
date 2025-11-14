@@ -10,7 +10,7 @@ import toml
 
 from .converter import NAME_SHEET_SEP
 from .toml_data import Metadata, Conditions
-from ..functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold
+from ..functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold, neuron_filter
 from ..functions.validation import validate_metadata
 
 class DataProcessor:
@@ -58,7 +58,8 @@ class DataProcessor:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, corr: str, finished_files: IntVar, error_list: list[str]) -> None:
+    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, amp_threshold: float,
+                    cv_threshold: float, corr: str, finished_files: IntVar, error_list: list[str]) -> None:
         """Encapsulates all data processing work needed to produce a report.
 
         Args:
@@ -69,6 +70,10 @@ class DataProcessor:
             cell as positive for a given agonist.
 
               smoothing_window (int): how many elements to average when smoothing the data.
+
+              amp_threshold (float): the KCl response amplitude threshold for cell classification (neuron vs non-neuron)
+
+              cv_threshold (float):  the coefficient of variance threshold for cell classification (neuron vs non-neuron)
 
               corr (str): true or false, determines if photobleaching correction should be done. Not a boolean because 
             writing the GUI config editor was easier this way.
@@ -122,7 +127,9 @@ class DataProcessor:
                     previous_threshold(data, self.treatment_windows, file_result, sd_multiplier)
                 case "derivative":
                     derivate_threshold(data, self.treatment_windows, file_result, sd_multiplier)
-            
+
+            neuron_filter(data, self.treatment_windows, file_result, amp_threshold, cv_threshold)
+
             number_of_cells = data.shape[0]
             file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]
             cell_ID += number_of_cells

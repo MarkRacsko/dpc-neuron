@@ -148,3 +148,16 @@ def derivate_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
         reactions = np.where(maximum_derivs > thresholds, True, False)
         file_result[agonist + "_reaction"] = reactions.flatten()
         file_result[agonist + "_amp"] = amplitudes.flatten()
+
+def neuron_filter(cell_data: np.ndarray, agonist_slices: dict[str, slice[int]], file_result: pd.DataFrame, 
+                  amp_threshold: float, cv_threshold: float):
+    baseline, potassium = cell_data[agonist_slices["baseline"]], cell_data[agonist_slices["KCl"]]
+    baseline_means = np.mean(baseline, axis=1)
+    potassium_cv = np.std(potassium, axis=1) / np.mean(potassium, axis=1)
+    potassium_amp = np.max(potassium - baseline_means[:, np.newaxis], axis=1)
+
+    amp_mask = potassium_amp > amp_threshold
+    cv_mask = potassium_cv > cv_threshold
+
+    file_result["KCl amp filter"] = amp_mask
+    file_result["KCl cv filter"] = cv_mask

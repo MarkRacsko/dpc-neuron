@@ -16,6 +16,8 @@ class Config:
                         input_section["method"],
                         input_section["SD_multiplier"],
                         input_section["smoothing_range"],
+                        input_section["amp_threshold"],
+                        input_section["cv_threshold"],
                         input_section["correction"])
         
         output_section = config_as_dict["output"]
@@ -38,6 +40,8 @@ class Input:
     method: str
     SD_multiplier: int
     smoothing_range: int
+    amp_threshold: float
+    cv_threshold: float
     correction: str
 
 @dataclass
