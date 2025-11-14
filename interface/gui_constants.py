@@ -13,7 +13,7 @@ CONFIG_H = 350 # height of the config editor panel
 META_H = 640 # height of the metadata editor panel
 
 CONF_SECTION_1_BASE_Y = 20 # first section of the config editor panel
-CONF_SECTION_2_BASE_Y = 210 # second section of the config editor panel
+CONF_SECTION_2_BASE_Y = 260 # second section of the config editor panel
 META_SECTION_1_BASE_Y = 70 # first section of the metadata editor panel
 META_SECTION_2_BASE_Y = 230 # second second of the metadata editor panel
 EDITOR_PADDING_X = 200 # BASE_X + this is the x coord for items in the second column of the editor panels
@@ -24,7 +24,7 @@ BOTTOM_TABLE_Y = 270 # y coord for the treatment table on the metadata panel
 # the StringVar storing the current mode changes.
 DISPLAY_MODES: dict[str, str] = {
     "analysis": "500x180",
-    "config": "500x580",
+    "config": "500x640",
     "metadata": "500x800"
 }
 

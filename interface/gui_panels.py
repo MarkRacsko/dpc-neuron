@@ -62,7 +62,23 @@ class ConfigFrame(tk.Frame):
         self.correction_label = tk.Label(self, text="Photobleach corr.:", font=FONT_M)
         self.correction_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + 5 * PADDING_Y)
         self.correction_button = tk.Button(self, text=f"{self.config.input.correction.capitalize()}", font=FONT_M, command=self.correction_switch)
-        self.correction_button.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 5 * PADDING_Y, width=102, height=35)
+        self.correction_button.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 5 * PADDING_Y, width=103, height=30)
+
+        ## Potassium response amplitude threshold
+        self.amp_threshold_label = tk.Label(self, text="KCl amp. threshold:", font=FONT_M)
+        self.amp_threshold_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + 6 * PADDING_Y)
+        self.amp_threshold_entry = int_entry(self)
+        self.amp_threshold_entry.delete(0, tk.END)
+        self.amp_threshold_entry.insert(0, str(self.config.input.amp_threshold))
+        self.amp_threshold_entry.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 6 * PADDING_Y)
+
+        ## Potassium response CV threshold
+        self.cv_threshold_label = tk.Label(self, text="KCl CV threshold:", font=FONT_M)
+        self.cv_threshold_label.place(x=BASE_X, y=CONF_SECTION_1_BASE_Y + 7 * PADDING_Y)
+        self.cv_threshold_entry = int_entry(self)
+        self.cv_threshold_entry.delete(0, tk.END)
+        self.cv_threshold_entry.insert(0, str(self.config.input.cv_threshold))
+        self.cv_threshold_entry.place(x=BASE_X + EDITOR_PADDING_X, y=CONF_SECTION_1_BASE_Y + 7 * PADDING_Y)
 
         # Output section
         self.output_label = tk.Label(self, text="Output section", font=FONT_L)
@@ -112,6 +128,8 @@ class ConfigFrame(tk.Frame):
         self.config.input.method = self.selected_method.get()
         self.config.input.SD_multiplier = int(self.SD_multiplier_entry.get())
         self.config.input.smoothing_range = int(self.smoothing_entry.get())
+        self.config.input.amp_threshold = int(self.amp_threshold_entry.get())
+        self.config.input.cv_threshold = int(self.cv_threshold_entry.get())
         self.config.input.correction = self.correction_button["text"]
         self.config.output.report_name = self.report_entry.get()
         self.config.output.summary_name = self.summary_entry.get()

@@ -1,8 +1,8 @@
 from copy import deepcopy
 from pathlib import Path
 
-from classes.toml_data import Metadata
-from functions.validation import validate_config, validate_metadata, validate_treatments
+from processing.classes.toml_data import Metadata
+from processing.functions.validation import validate_config, validate_metadata, validate_treatments
 
 # this is a dict because the validate_config function works on dicts not my Config class
 good_config = {
@@ -10,7 +10,10 @@ good_config = {
         "target_folder": Path("./data"),
         "method": "baseline",
         "SD_multiplier": 2,
-        "smoothing_range": 5
+        "smoothing_range": 5,
+        "amp_threshold": 0.3,
+        "cv_threshold": 0.1,
+        "correction": "true"
     },
     "output": {
         "report_name": "report_",
@@ -88,6 +91,27 @@ def test_config_bad_smoothing_2():
 
     errors = validate_config(bad_config)
     assert "must not be an odd number" in errors
+
+def test_config_bad_amp():
+    bad_config = deepcopy(good_config)
+    bad_config["input"]["amp_threshold"] = 1
+
+    errors = validate_config(bad_config)
+    assert "amp_threshold value must be a floating point number" in errors
+
+def test_config_bad_cv():
+    bad_config = deepcopy(good_config)
+    bad_config["input"]["cv_threshold"] = 1
+    
+    errors = validate_config(bad_config)
+    assert "cv_threshold value must be a floating point number" in errors
+
+def test_config_bad_corr():
+    bad_config = deepcopy(good_config)
+    bad_config["input"]["correction"] = "asdasdasd"
+    
+    errors = validate_config(bad_config)
+    assert "correction value incorrect" in errors    
 
 def test_config_bad_report():
     bad_config = deepcopy(good_config)

@@ -44,6 +44,18 @@ def validate_config(config: dict[str, dict[str, Any]]) -> str:
         message += "\n- smoothing_range key missing from input section"
 
     try:
+        if not isinstance(config["input"]["amp_threshold"], float):
+            message += "\n- amp_threshold value must be a floating point number (0.1 for example)"
+    except KeyError:
+        message += "\n- amp_threshold key missing from input section"
+
+    try:
+        if not isinstance(config["input"]["cv_threshold"], float):
+            message += "\n- cv_threshold value must be a floating point number (0.1 for example)"
+    except KeyError:
+        message += "\n- cv_threshold key missing from input section"
+
+    try:
         if not isinstance(config["input"]["correction"], str):
             message += "\n- correction value must be a string."
         else:
