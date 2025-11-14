@@ -56,6 +56,8 @@ class AnalysisEngine:
         arg_tuple = (self.config.input.method,
                      self.config.input.SD_multiplier,
                      self.config.input.smoothing_range,
+                     self.config.input.amp_threshold,
+                     self.config.input.cv_threshold,
                      self.config.input.correction,
                      self.finished_files,
                      errors)
