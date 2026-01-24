@@ -36,9 +36,9 @@ class MainWindow:
         self.check_p.place(x=BASE_X, y=BASE_Y)
 
         # Summary checkbox
-        self.check_t_state = tk.IntVar()
-        self.check_t = tk.Checkbutton(self.checkbox_frame, text="Summarize", font=FONT_M, variable=self.check_t_state)
-        self.check_t.place(x=BASE_X, y=BASE_Y + PADDING_Y)
+        self.check_s_state = tk.IntVar()
+        self.check_s = tk.Checkbutton(self.checkbox_frame, text="Summarize", font=FONT_M, variable=self.check_s_state)
+        self.check_s.place(x=BASE_X, y=BASE_Y + PADDING_Y)
 
         # Graphing checkbox
         self.check_g_state = tk.IntVar(value=0)
@@ -139,7 +139,7 @@ class MainWindow:
             "\nand \"derivative\".\n\nSee README.md")
             return
         
-        previous_mode = self.current_mode.get()
+        previous_mode = self.current_mode.get() # what the app looked like before we pressed the button
         self.current_mode.set("analysis")
         self.button_frame.place(x=OFFSCREEN_X)
         self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y, width=460, height=90)
@@ -176,6 +176,9 @@ class MainWindow:
     def analysis_work(self, mode: str) -> None:
         """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
          display the progress indicator.)
+
+         Args:
+            mode (str): The display mode of the program that should be restored when this function finishes its work.
         """
         self.in_progress_label.config(text="Converting files...")
         self.analyzer = AnalysisEngine(self.config, self.finished_file_counter, bool(self.check_r_state.get()))
@@ -185,7 +188,7 @@ class MainWindow:
         for error_message in error_list: # if there was no error, nothing happens
             messagebox.showerror(message=error_message)
         
-        proc, tab, graph = self.check_p_state.get(), self.check_t_state.get(), self.check_g_state.get()
+        proc, summ, graph = self.check_p_state.get(), self.check_s_state.get(), self.check_g_state.get()
 
         error_list = []
         if proc:
@@ -193,14 +196,14 @@ class MainWindow:
             self.analyzer.process_data(error_list)
             for error in error_list:
                 messagebox.showerror(message=error) # if the list is empty, nothing will happen
-        if tab:
+        if summ:
             self.in_progress_label.config(text="Working on summary...")
             self.analyzer.summarize_results()
         if graph:
             self.in_progress_label.config(text="Drawing graphs...")
             self.analyzer.graph_data()
 
-        messagebox.showinfo(message=MESSAGES[(proc, tab, graph)])
+        messagebox.showinfo(message=MESSAGES[(proc, summ, graph)])
 
         self.current_mode.set(mode)
         self.tracker_frame.place(x=OFFSCREEN_X)
@@ -227,7 +230,7 @@ class MainWindow:
             target (str): "feather" or "excel", indicates the direction of conversion
         """
         assert target in {"feather", "excel"} # should never fail
-        previous_mode = self.current_mode.get()
+        previous_mode = self.current_mode.get() # what the app looked like before
         self.current_mode.set("analysis")
         self.button_frame.place(x=OFFSCREEN_X)
         self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y, width=460, height=230)
@@ -240,7 +243,7 @@ class MainWindow:
 
         messagebox.showinfo(message="Conversion finished!")
 
-        self.current_mode.set(previous_mode)
+        self.current_mode.set(previous_mode) # restore previous window size
         self.button_frame.place(x=BASE_X, y=MAIN_BUTTON_Y)
         self.tracker_frame.place(x=OFFSCREEN_X)
         self.finished_file_counter.set(0)
