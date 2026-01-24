@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 import toml
+import sys
 
 from interface.gui_constants import FONT_M, FONT_L
 from interface.gui_constants import BASE_X, PADDING_X, PADDING_Y, EDITOR_PADDING_X
@@ -139,8 +140,15 @@ class ConfigFrame(tk.Frame):
         if errors:
             messagebox.showerror(errors)
             return
+        
+        standalone_mode = getattr(sys, "frozen", False)
 
-        with open(Path("./config.toml"), "w") as f:
+        if standalone_mode:
+            base_path = Path(sys.executable).parent
+        else:
+            base_path = Path(__file__).parent
+
+        with open(base_path / "config.toml", "w") as f:
             toml.dump(config_as_dict, f)
 
         messagebox.showinfo(message="Configuration saved!")

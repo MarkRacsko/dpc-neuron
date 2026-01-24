@@ -41,6 +41,22 @@ MESSAGES: dict[tuple[int, int, int], str] = {
     (1, 1, 1): "Finished processing data, summarizing results, and making graphs."
 }
 
+CONFIG_TEMPLATE = {
+    "input": {
+        "target_folder": "",
+        "method": "previous",
+        "SD_multiplier": 3,
+        "smoothing_range": 5,
+        "amp_threshold": 0.3,
+        "cv_threshold": 0.1,
+        "correction": "True"
+    },
+    "output": {
+        "report_name": "report_",
+        "summary_name": "summary"
+    }
+}
+
 # this is used to create new metadata if the user selects a folder without a metadata.toml file
 METADATA_TEMPLATE = {
     "conditions": {

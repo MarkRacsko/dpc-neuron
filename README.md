@@ -37,7 +37,7 @@ key_2 = 2
 When editing one of these files, only change the values, not the names of the keys. Subsections within the treatment section of the metadata file can be renamed, but other section headers cannot.
 
 ### The main config file
-This file consists of 2 sections:
+This file is automatically created from a template if it does not exist. It consists of 2 sections:
 - input:
     - target_folder: The default option for the processing target
     - method: What method to use for determining if cells reacted to an agonist. Valid values are "baseline", "previous", and "derivative".
