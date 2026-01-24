@@ -7,7 +7,7 @@ from interface.gui_constants import CONFIG_TEMPLATE
 from processing.classes.toml_data import Config
 from processing.functions.validation import validate_config
 
-def main():
+def main() -> int:
     standalone_mode = getattr(sys, "frozen", False)
 
     if standalone_mode:
@@ -23,7 +23,7 @@ def main():
         errors = validate_config(config)
         if errors:
             messagebox.showerror(message=errors)
-            exit()
+            return 1
         config = Config(config)
 
     else:
@@ -32,6 +32,8 @@ def main():
             toml.dump(config.to_dict(), f)
     
     MainWindow(config)
+    return 0
 
 if __name__ == "__main__":
-    main()
+    exit_status: int = main()
+    raise SystemExit(exit_status)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import math
 
-from numba import njit
+#from numba import njit
 import numpy as np
 import pandas as pd
 
@@ -18,7 +18,7 @@ def normalize(array: np.ndarray, baseline: int) -> np.ndarray:
     """
     return array / array[0:baseline].mean()
 
-@njit # because this is by far the slowest of my analysis functions
+#@njit # because this is by far the slowest of my analysis functions
 def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
     """This function performs a sliding window type smoothing on an array representing an individual Ca trace.
 
@@ -135,7 +135,7 @@ def derivate_threshold(cell_data: np.ndarray, agonist_slices: dict[str, slice[in
         sd_mult (int): Determines by how many standard deviations must a cell's response exceed the mean of the
         baseline's first derivative to be considered positive for any given agonist.
     """
-    derivs = np.gradient(cell_data, axis=1)
+    derivs = np.gradient(f=cell_data, axis=1)
     baseline_deriv_means = derivs[:,agonist_slices["baseline"]].mean(axis=1, keepdims=True)
     baseline_deriv_stdevs = derivs[:,agonist_slices["baseline"]].std(axis=1, mean=baseline_deriv_means, keepdims=False)
     thresholds = baseline_deriv_means.flatten() + sd_mult*baseline_deriv_stdevs

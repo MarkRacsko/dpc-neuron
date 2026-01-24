@@ -109,9 +109,14 @@ class MainWindow:
         # this line is here and not at the beginning so that the window won't jump around:
         self.root.geometry(DISPLAY_MODES[self.current_mode.get()])
         self.config_button_press() # this is here so the program can start in the config layout
-        self.root.protocol("WM_DELETE_WINDOW", exit)
+        self.root.protocol("WM_DELETE_WINDOW", self.window_exit)
         self.root.mainloop()
     
+    def window_exit(self) -> None:
+        if messagebox.askokcancel(title="Quit", message="Are you sure?"):
+            self.root.quit()
+            self.root.destroy()
+
     def resize_window(self, *args) -> None:
         """Called whenever the current_mode StringVar is written to.
         """
