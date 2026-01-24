@@ -4,6 +4,8 @@ test-data/
 new_data/
 purge_cache.py
 purge_feathers.py
+config.toml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
