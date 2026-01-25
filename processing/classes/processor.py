@@ -9,7 +9,7 @@ import pandas as pd
 import toml
 
 from .converter import NAME_SHEET_SEP
-from .toml_data import Metadata, Conditions
+from .toml_data import Metadata, Conditions, Config
 from ..functions.processing import normalize, smooth, baseline_threshold, previous_threshold, derivate_threshold, neuron_filter
 from ..functions.validation import validate_metadata
 
@@ -17,10 +17,11 @@ class DataProcessor:
     _error_lock = Lock()
     _file_count_lock = Lock()
 
-    def __init__(self, path: Path, report_name: str) -> None:
+    def __init__(self, path: Path, config: Config) -> None:
         self.path = path
+        self.config = config
         self.cache_path = path / ".cache"
-        self.report_path = path / f"{report_name}{path.name}.xlsx"
+        self.report_path = path / f"{self.config.output.report_name}{path.name}.xlsx"
         self.treatment_col_names: list[str] = []
         self.treatment_windows: dict[str, slice[int]] = {}
         self.report: Optional[pd.DataFrame] = None
@@ -58,26 +59,10 @@ class DataProcessor:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, method: str, sd_multiplier: int, smoothing_window: int, amp_threshold: float,
-                    cv_threshold: float, corr: str, finished_files: IntVar, error_list: list[str]) -> None:
+    def make_report(self, finished_files: IntVar, error_list: list[str]) -> None:
         """Encapsulates all data processing work needed to produce a report.
 
         Args:
-              method (str): the basis of comparison for determining if a cell reacted to an agonist, can be "baseline",
-            "previous", or "derivative". See the README for details.
-
-              sd_multiplier (int): how many standard deviations of difference from the basis is required to consider a
-            cell as positive for a given agonist.
-
-              smoothing_window (int): how many elements to average when smoothing the data.
-
-              amp_threshold (float): the KCl response amplitude threshold for cell classification (neuron vs non-neuron)
-
-              cv_threshold (float):  the coefficient of variance threshold for cell classification (neuron vs non-neuron)
-
-              corr (str): true or false, determines if photobleaching correction should be done. Not a boolean because 
-            writing the GUI config editor was easier this way.
-
               finished_files (tk.IntVar): used to keep track of how many files we have finished processing, for the
             progress tracker in the GUI.
 
@@ -86,7 +71,8 @@ class DataProcessor:
         """
         if not self.need_to_work:
             return
-                
+        
+        options = self.config.input
         output_columns = ["cell_ID", "condition", "cell_type"] + self.treatment_col_names
 
         # self.report = pd.DataFrame(columns=output_columns)
@@ -98,9 +84,9 @@ class DataProcessor:
             file_result = pd.DataFrame(columns=output_columns)
             try:
                 if self.conditions.ratiometric_dye.lower() == "true":
-                    cell_cols, data = self.prepare_ratiometric_data(file, smoothing_window, corr)
+                    cell_cols, data = self.prepare_ratiometric_data(file, options.smoothing_range, options.correction)
                 else:
-                    cell_cols, data = self.prepare_non_ratiometric_data(file, smoothing_window, corr)
+                    cell_cols, data = self.prepare_non_ratiometric_data(file, options.smoothing_range, options.correction)
             except SyntaxError:
                 bad_sheet_files.append(file)
                 continue
@@ -120,15 +106,15 @@ class DataProcessor:
             # determine if cells react to each of the agonists, and how big the response amplitudes are
             # no default case because we already have a guard clause to make sure these 3 are the only options, which we
             # do in main before reading any measurement data from disk, so if the program's gonna crash it does so quickly
-            match method:
+            match options.method:
                 case "baseline":
-                    baseline_threshold(data, self.treatment_windows, file_result, sd_multiplier)
+                    baseline_threshold(data, self.treatment_windows, file_result, options.SD_multiplier)
                 case "previous":
-                    previous_threshold(data, self.treatment_windows, file_result, sd_multiplier)
+                    previous_threshold(data, self.treatment_windows, file_result, options.SD_multiplier)
                 case "derivative":
-                    derivate_threshold(data, self.treatment_windows, file_result, sd_multiplier)
+                    derivate_threshold(data, self.treatment_windows, file_result, options.SD_multiplier)
 
-            neuron_filter(data, self.treatment_windows, file_result, amp_threshold, cv_threshold)
+            neuron_filter(data, self.treatment_windows, file_result, options.amp_threshold, options.cv_threshold)
 
             number_of_cells = data.shape[0]
             file_result["cell_ID"] = [x for x in range(cell_ID, cell_ID + number_of_cells)]

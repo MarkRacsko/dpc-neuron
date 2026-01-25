@@ -40,7 +40,7 @@ class AnalysisEngine:
         errors = []
         for path in self.config.input.target_folder.iterdir():
             if path.is_dir():
-                instance = DataProcessor(path, self.config.output.report_name)
+                instance = DataProcessor(path, self.config)
                 error = instance.preprocessing(self.repeat)
                 if error is not None:
                     errors.append(error)
@@ -55,13 +55,7 @@ class AnalysisEngine:
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
-        arg_tuple = (self.config.input.method,
-                     self.config.input.SD_multiplier,
-                     self.config.input.smoothing_range,
-                     self.config.input.amp_threshold,
-                     self.config.input.cv_threshold,
-                     self.config.input.correction,
-                     self.finished_files,
+        arg_tuple = (self.finished_files,
                      errors)
         threads = []
         for processor in self._processors:
