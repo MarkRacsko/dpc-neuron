@@ -130,3 +130,18 @@ What the program should be doing:
         8. Update report appropriately
     3. Write out report and update tabulated report if -t is in play.
 5. Write the tabulated summary
+
+Release plan:
+1. Learn GitHub actions
+2. Start testing some basic GitHub actions
+3. Plan GH Action workflow
+4. Write the workflow
+5. Test it until it works
+6. Somehow test the Windows builds
+
+Workflow plan:
+1. checkout
+2. install uv and use it to setup env
+3. build the smoothing extension module (Cython?)
+4. use Nuitka to build everything else
+5. upload the artifacts
