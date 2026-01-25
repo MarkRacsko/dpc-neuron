@@ -24,10 +24,10 @@ def main() -> int:
         if errors:
             messagebox.showerror(message=errors)
             return 1
-        config = Config(config)
+        config = Config(standalone_mode, config)
 
     else:
-        config = Config(CONFIG_TEMPLATE)
+        config = Config(False, CONFIG_TEMPLATE)
         with open(config_path, "w") as f:
             toml.dump(config.to_dict(), f)
     

@@ -10,7 +10,8 @@ type TimeValue = int | str
 
 @dataclass(init=False)
 class Config:
-    def __init__(self, config_as_dict: dict[str, dict[str, Any]]) -> None:
+    def __init__(self, mode: bool, config_as_dict: dict[str, dict[str, Any]]) -> None:
+        self.standalone: bool = mode
         input_section = config_as_dict["input"]
         self.input = Input(Path(input_section["target_folder"]),
                         input_section["method"],
