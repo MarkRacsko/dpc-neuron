@@ -8,12 +8,12 @@ from matplotlib.figure import Figure
 import pandas as pd
 import toml
 
-from ...compiled import cy_smooth
+from analysis.compiled.cy_smooth import smooth # type: ignore it actually works
 
 from .converter import NAME_SHEET_SEP
 from .toml_data import Metadata, Conditions, Config
-from ..functions.processing import normalize, baseline_threshold, previous_threshold, derivate_threshold, neuron_filter
-from ..functions.validation import validate_metadata
+from .processing_functions import normalize, baseline_threshold, previous_threshold, derivate_threshold, neuron_filter
+from .validation import validate_metadata
 
 class DataProcessor:
     _error_lock = Lock()
@@ -249,8 +249,8 @@ class DataProcessor:
         cells_380 = cells_380 - bgr_380
         
         # smoothing should probably go here
-        cells_340 = np.apply_along_axis(cy_smooth.smooth, 0, cells_340, window_size = smoothing_window)
-        cells_380 = np.apply_along_axis(cy_smooth.smooth, 0, cells_380, window_size = smoothing_window)
+        cells_340 = np.apply_along_axis(smooth, 0, cells_340, window_size = smoothing_window)
+        cells_380 = np.apply_along_axis(smooth, 0, cells_380, window_size = smoothing_window)
 
         # photobleaching correction
         if corr.lower() == "true": # I know this looks stupid, see the docstring of the make_report method
@@ -290,7 +290,7 @@ class DataProcessor:
         
         # normalization and smoothing
         cells = np.apply_along_axis(normalize, 0, cells, baseline=self.treatment_windows["baseline"].stop)
-        cells = np.apply_along_axis(cy_smooth.smooth, 0, cells, window_size = smoothing_window)
+        cells = np.apply_along_axis(smooth, 0, cells, window_size = smoothing_window)
         
         # photobleaching correction
         if corr.lower() == "true": # I know this looks stupid, see the docstring of the make_report method

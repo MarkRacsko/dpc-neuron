@@ -13,8 +13,8 @@ from interface.gui_constants import META_SECTION_1_BASE_Y, META_SECTION_2_BASE_Y
 from interface.gui_constants import METADATA_TEMPLATE
 
 from interface.gui_utilities import int_entry, str_entry
-from processing.classes.toml_data import Config, Metadata, Treatments
-from processing.functions.validation import validate_config, validate_treatments
+from analysis.toml_data import Config, Metadata, Treatments
+from analysis.validation import validate_config, validate_treatments
 
 
 class ConfigFrame(tk.Frame):

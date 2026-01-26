@@ -9,9 +9,9 @@ from interface.gui_constants import BASE_X, BASE_Y, PADDING_X, PADDING_Y, OFFSCR
 from interface.gui_constants import MAIN_BUTTON_Y, PANEL_W, CONFIG_H, META_H, PANEL_Y
 from interface.gui_constants import DISPLAY_MODES, MESSAGES
 
-from processing.classes.engine import AnalysisEngine
-from processing.classes.converter import Converter
-from processing.classes.toml_data import Config
+from analysis.engine import AnalysisEngine
+from analysis.converter import Converter
+from analysis.toml_data import Config
 
 
 class MainWindow:

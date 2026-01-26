@@ -4,8 +4,8 @@ from pathlib import Path
 from tkinter import messagebox
 from interface.gui_main import MainWindow
 from interface.gui_constants import CONFIG_TEMPLATE
-from processing.classes.toml_data import Config
-from processing.functions.validation import validate_config
+from analysis.toml_data import Config
+from analysis.validation import validate_config
 
 def main() -> int:
     standalone_mode = getattr(sys, "frozen", False)
