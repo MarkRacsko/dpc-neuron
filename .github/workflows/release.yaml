@@ -1,0 +1,20 @@
+name: Build releases
+
+on:
+    workflow_dispatch
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v7
+
+            - name: Install my project
+              run: uv sync --locked --all-extras --dev
+
+            - name: AOT compile smoothing function
+              run: echo "Not implemented yet!"
