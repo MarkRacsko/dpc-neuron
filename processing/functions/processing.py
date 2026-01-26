@@ -1,7 +1,6 @@
 from __future__ import annotations
 import math
 
-#from numba import njit
 import numpy as np
 import pandas as pd
 
@@ -18,7 +17,6 @@ def normalize(array: np.ndarray, baseline: int) -> np.ndarray:
     """
     return array / array[0:baseline].mean()
 
-#@njit # because this is by far the slowest of my analysis functions
 def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
     """This function performs a sliding window type smoothing on an array representing an individual Ca trace.
 
