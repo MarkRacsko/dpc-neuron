@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 import pandas as pd
 import toml
 
-from ..functions import cy_smooth
+from ...compiled import cy_smooth
 
 from .converter import NAME_SHEET_SEP
 from .toml_data import Metadata, Conditions, Config
