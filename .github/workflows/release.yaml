@@ -17,7 +17,9 @@ jobs:
               run: uv sync --locked --all-extras --dev
 
             - name: AOT compile smoothing function
-              run: uv run src/neuron/compiled/compile_smooth.py build_ext --inplace
+              run: cd src/neuron/compiled && uv run compile_smooth.py build_ext --inplace && cd ../../..
+              # looks dumb, but there is a reason for it: having a setup.py at the project root would imply it's
+              # meant to package the whole project, but here I only use it for this one file
 
             - name: Rename compiled extension
               shell: bash
