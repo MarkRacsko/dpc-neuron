@@ -33,4 +33,4 @@ jobs:
                 fi
 
             - name: Compile project with Nuitka
-              run: uv run nuitka --standalone main.py --enable-plugins=tk-inter
+              run: uv run nuitka --standalone src/neuron/main.py --enable-plugins=tk-inter
