@@ -18,9 +18,9 @@ class Converter:
         self.report_name = report_name
         self.lock = Lock()
 
-    def convert_to_feather(self, finished_files: IntVar):
+    def convert_to_pickle(self, finished_files: IntVar):
         """Reads in all Excel files found in this measurement folders and converts each of their sheets into a separate
-        .feather file. Uses calamine because it is a bit faster than openpyxl.
+        pickled file. Uses calamine because it is a bit faster than openpyxl.
 
         Args:
             finished_files (IntVar): A tk variable received from the GUI to keep track of how many files have been
@@ -34,7 +34,7 @@ class Converter:
                     headers, numbers = content[0], content[1:]
                     df = pd.DataFrame(data=numbers, columns=headers)
 
-                    df.to_feather(cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.feather")
+                    df.to_pickle(cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.pkl")
 
                 with self.lock:
                     finished_files.set(finished_files.get() + 1)
@@ -59,20 +59,20 @@ class Converter:
             finished_files.set(0)
 
     def convert_to_excel(self, finished_files: IntVar):
-        """Converts the cached .feather files back into Excel, overwriting the original files.
+        """Converts the cached pickle files back into Excel, overwriting the original files.
 
         Args:
             finished_files (IntVar): A tk variable received from the GUI to keep track of how many files have been
             finished.
         """
         def work(folder: Path, cache_path: Path):
-            cached_files = [f for f in cache_path.glob("*.feather")]
+            cached_files = [f for f in cache_path.glob("*.pkl")]
             excel_data: dict[str, list[tuple[str, pd.DataFrame]]] = {}
             # filenames mapped to lists of their content as (sheetname, data) pairs
             
             for file in cached_files:
                 file_name = file.name
-                file_data = pd.read_feather(cache_path / file_name)
+                file_data = pd.read_pickle(cache_path / file_name)
                 
                 file_name, sheet_name = file_name.split(sep=NAME_SHEET_SEP)
                 sheet_name = sheet_name.rstrip(".feather")

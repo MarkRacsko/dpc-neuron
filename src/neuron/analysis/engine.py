@@ -50,7 +50,7 @@ class AnalysisEngine:
     
     def create_caches(self) -> None:
         converter = Converter(self.config.input.target_folder, self.config.output.report_name)
-        converter.convert_to_feather(self.finished_files)
+        converter.convert_to_pickle(self.finished_files)
 
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.

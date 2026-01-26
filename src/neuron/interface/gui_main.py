@@ -242,7 +242,7 @@ class MainWindow:
         self.in_progress_label.config(text="Converting...")
 
         if target == "feather":
-            self.converter.convert_to_feather(self.finished_file_counter)
+            self.converter.convert_to_pickle(self.finished_file_counter)
         else:
             self.converter.convert_to_excel(self.finished_file_counter)
 

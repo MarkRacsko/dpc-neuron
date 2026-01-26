@@ -233,8 +233,8 @@ class DataProcessor:
             transformed data, transposed (compared to how it was in the input file).
         """
         # read in 340 and 380 data separately
-        F340_data = pd.read_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}F340.feather")
-        F380_data = pd.read_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}F380.feather")
+        F340_data = pd.read_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}F340.pkl")
+        F380_data = pd.read_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}F380.pkl")
         cell_cols = [c for c in F380_data.columns if c not in {"Time", "Background"}]
         
         # split the data
@@ -283,7 +283,7 @@ class DataProcessor:
             tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
             transformed data, transposed (compared to how it was in the input file).
         """
-        data = pd.read_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Raw.feather")
+        data = pd.read_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Raw.pkl")
         cell_cols = [c for c in data.columns if c not in {"Time", "Background"}]
         x_data, bgr, cells = data["Time"].to_numpy(), data["Background"].to_numpy(), data[cell_cols].to_numpy()
         x_data, bgr = x_data[:, np.newaxis], bgr[:, np.newaxis]
