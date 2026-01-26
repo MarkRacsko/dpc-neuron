@@ -27,9 +27,9 @@ jobs:
                 TARGET_DIR="src/neuron/compiled"
                 
                 if [ "${{ runner.os }}" == "Windows" ]; then
-                  mv $TARGET_DIR/cy_smooth.cpython*.pyd $TARGET_DIR/cy_smooth.pyd \;
+                  mv $TARGET_DIR/cy_smooth.cpython*.pyd $TARGET_DIR/cy_smooth.pyd
                 else
-                  mv $TARGET_DIR/cy_smooth.cpython*.so $TARGET_DIR/cy_smooth.so \;
+                  mv $TARGET_DIR/cy_smooth.cpython*.so $TARGET_DIR/cy_smooth.so
                 fi
 
             - name: Compile project with Nuitka
