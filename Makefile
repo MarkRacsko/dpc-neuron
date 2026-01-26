@@ -8,5 +8,5 @@ clean:
 	@rm -rf main.dist
 
 smooth:
-	@uv run compiled/compile_smooth.py build_ext --inplace
-	@mv compiled/cy_smooth.cpython*.so compiled/cy_smooth.so
+	@uv run src/neuron/compiled/compile_smooth.py build_ext --inplace
+	@mv src/neuron/compiled/cy_smooth.cpython*.so src/neuron/compiled/cy_smooth.so

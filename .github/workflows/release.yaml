@@ -17,4 +17,18 @@ jobs:
               run: uv sync --locked --all-extras --dev
 
             - name: AOT compile smoothing function
-              run: echo "Not implemented yet!"
+              run: uv run src/neuron/compiled/compile_smooth.py build_ext --inplace
+
+            - name: Rename compiled extension
+              shell: bash
+              run: |
+                TARGET_DIR="src/neuron/compiled"
+                
+                if [ "${{ runner.os }}" == "Windows" ]; then
+                  mv $TARGET_DIR/cy_smooth.cpython*.pyd $TARGET_DIR/cy_smooth.pyd \;
+                else
+                  mv $TARGET_DIR/cy_smooth.cpython*.so $TARGET_DIR/cy_smooth.so \;
+                fi
+
+            - name: Compile project with Nuitka
+              run: uv run nuitka --standalone main.py --enable-plugins=tk-inter
