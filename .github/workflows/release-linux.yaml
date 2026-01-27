@@ -1,4 +1,4 @@
-name: Build Linux releases
+name: Build Linux release
 
 on:
     workflow_dispatch
@@ -33,8 +33,11 @@ jobs:
             - name: Compile project with Nuitka
               run: uv run nuitka --standalone src/neuron/main.py -o Neuron --enable-plugins=tk-inter
 
+            - name: Rename .dist folder
+              run: mv main.dist Neuron-app
+
             - name: Upload compiled program
               uses: actions/upload-artifact@v6
               with:
                 name: Neuron-${{ runner.os }}
-                path: Neuron.dist
+                path: Neuron-app
