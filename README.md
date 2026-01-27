@@ -3,18 +3,19 @@
 This project is meant to help me and my colleagues analyze and visualize results from my dental pulp - sensory neuron coculture experiments and from Ca measurement microscopy workflows in general.
 
 # Installation
-(For those unfamiliar with Python and uv.)
-1. To install uv, go to https://docs.astral.sh/uv/getting-started/installation/ and follow the instructions for your OS. (On Windows, type "powershell" into the Start menu search bar, open that, and paste the command there.)
-2. Download my program from this Github page by clicking on the green "<> Code" button and selecting "Download ZIP".
-3. Extract the zip archive wherever you like.
-4. Open the extracted folder where this README and all the other files are. Open a command prompt or terminal here. (On Windows, click the address bar when you are in the right folder, type "cmd" without the quotes and hit Enter.)
-5. Run the following command: `uv sync`
+Pre-built binary releases that do not require anything else to be installed are available for Windows and Linux. Go to Releases and download the appropriate one. The main executable will be called Neuron.exe (or just Neuron on Linux).
 
-(If you're using Mac or Linux, uv will work the same, just use the appropriate install instructions from the linked page, and whatever terminal you have.)
+## Running from Python
+If you're on macOS or the pre-built release doesn't work, you can always run the project as a normal Python program. For that, you will need:
+
+1. uv, you can install it by going to https://docs.astral.sh/uv/getting-started/installation/ and following the instructions for your OS.
+2. Clone this repo with git, or manually download my code from this Github page by clicking on the green "<> Code" button and selecting "Download ZIP".
+3. Extract the archive and go inside where this README and all the other files are. Open a command prompt or terminal here. (On Windows, click the address bar when you are in the right folder, type "cmd" without the quotes and hit Enter.)
+4. Run the following command: `uv sync`
+5. One of my functions needs to be compiled for performance reasons, to do this change directory: `cd src/neuron/analysis/compiled` and then run this command: `uv run compile_smooth.py`
+6. To run my program, go two directories up (`cd ../..`) to src/neuron and run `uv run main.py`
 
 # Usage
-To run the program, type `uv run main.py` into the command prompt opened from this folder, or alternatively you can use the provided launcher file. (Which just runs the above uv command.)
-
 The program takes a folder as its input and expects data from individual measurements to be grouped into subfolders within this folder. (All data from one day of experiments goes in one subfolder for me, but this is not mandatory, only the structure is.) Experimental conditions are described by a metadata.toml file that must be present in every subfolder to be processed. Processing configurations are set by a config.toml file, located in the same folder as this README and the Python files. The expected contents of these files are described further below.
 
 ## The graphical interface
@@ -37,7 +38,7 @@ key_2 = 2
 When editing one of these files, only change the values, not the names of the keys. Subsections within the treatment section of the metadata file can be renamed, but other section headers cannot.
 
 ### The main config file
-This file is automatically created from a template if it does not exist. It consists of 2 sections:
+This file must be in the same folder as the main executable, and is automatically created from a template if it does not exist. It consists of 2 sections:
 - input:
     - target_folder: The default option for the processing target
     - method: What method to use for determining if cells reacted to an agonist. Valid values are "baseline", "previous", and "derivative".
