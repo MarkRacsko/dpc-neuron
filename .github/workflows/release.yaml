@@ -33,7 +33,6 @@ jobs:
               run: |
                 cd src/neuron/analysis/compiled
                 uv run compile_smooth.py build_ext --inplace
-                uv run compile_rename.py
                 cd ../../../..
               # looks dumb, but there is a reason for it: having a setup.py at the project root would imply it's
               # meant to package the whole project, but here I only use it for this one file
