@@ -19,13 +19,13 @@ If you're on macOS or the pre-built release doesn't work, you can always run the
 The program takes a folder as its input and expects data from individual measurements to be grouped into subfolders within this folder. (All data from one day of experiments goes in one subfolder for me, but this is not mandatory, only the structure is.) Experimental conditions are described by a metadata.toml file that must be present in every subfolder to be processed. Processing configurations are set by a config.toml file, located in the same folder as this README and the Python files. The expected contents of these files are described further below.
 
 ## The graphical interface
-The program exists in two versions, a command line only one (main_CLI.py) and one with a graphical interface (main.py). The graphical version performs the same analysis tasks and has checkboxes that correspond to the CLI version's command line flags, namely:
+The analysis tasks to be performed are set using checkboxes, namely:
 - Process: to do data processing and create reports
 - Summarize: to summarize all existing reports
 - Make graphs: to draw line plots for each cell
 - Repeat: normally the program ignores folders that already have a report file in them, this option tells it to process everything anyway.
 
-The GUI version also comes with an editor for the program's config file and the experiment metadata files. The use of these should be fairly straightforward, the only catch is that the metadata editor **does NOT preserve unsaved changes** to its fields if you switch over to the config editor. (The original contents of the loaded metadata file are preserved though.) If you select a folder without a metadata file, the program will create a blank one from a template, or alternatively you can copy an existing metadata file (or the sample) to new folders. If you copy the sample, make sure to rename it to "metadata.toml" as both the editor and the analyzer expect this exact file name. Of course this toml file can also be edited manually, as detailed below.
+The GUI also comes with an editor for the program's config file and the experiment metadata files. The use of these should be fairly straightforward, the only catch is that the metadata editor **does NOT preserve unsaved changes** to its fields if you switch over to the config editor. (The original contents of the loaded metadata file are preserved though.) If you select a folder without a metadata file, the program will create a blank one from a template, or alternatively you can copy an existing metadata file (or the sample) to new folders. If you copy the sample, make sure to rename it to "metadata.toml" as both the editor and the analyzer expect this exact file name. Of course this toml file can also be edited manually, as detailed below.
 
 The bottom row of the 6 main buttons allows you to convert Excel files to and from the cache (explained further below), or delete the existing one. (Which is necessary if you've changed the Excel files in any folder, or added new ones.) If you've added new folders with measurements in them, manually pressing the "Convert to cache" button is not actually needed, the program will automatically perform this conversion when necessary.
 
@@ -64,3 +64,8 @@ Note: The reason an agonist's end value and the next agonist's begin value **can
 
 ## The cache
 Reading Excel files into pandas DataFrames is dreadfully slow, so I've implemented a caching mechanism to convert Excel files to a more performant file format, and work with those. When the program first encounters a measurement (= a subfolder in the target folder), it reads all measurement files there and converts them into this faster format, storing them in a .cache folder. Do not touch this folder, unless you want to force the program to re-read the Excel files, in which case you should delete the .cache folder, there is a button in the graphical user interface to do so. (In case you've added or replaced some measurement files. The program does not individually track which files have been cached.)
+
+# Technical notes
+- There is no macOS binary release because one of the libraries my program depends on failed to compile on macOS. I'm willing to fix it if someone asks.
+- The smoothing function is compiled ahead of time using cython to improve performance. Previously I was using Numba, but the Nuitka compiler doesn't like Numba so I used Cython instead.
+- The compilation script using setuptools is in the same folder as the smoothing function's file. I know a setup.py at the project's root is more conventional, but that would imply it's meant to compile/install the whole project. Which is not what mine does, hence its location.

@@ -5,6 +5,7 @@ new_data/
 purge_cache.py
 purge_feathers.py
 config.toml
+Plan.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
