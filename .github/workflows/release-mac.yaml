@@ -5,10 +5,7 @@ on:
 
 jobs:
     build:
-        strategy:
-          matrix:
-            os: [ubuntu-latest, windows-latest, macOS-latest]
-        runs-on: ${{ matrix.os }}
+        runs-on: macOS-latest
 
         steps:
             - uses: actions/checkout@v6
@@ -16,15 +13,10 @@ jobs:
             - name: Install uv
               uses: astral-sh/setup-uv@v7
 
-            - name: Install tk package if needed
+            - name: Install tk package
               shell: bash
               run: |
-                if [ "${{ runner.os }}" == "Linux" ]; then
-                  sudo apt update
-                  sudo apt install python3-tk -y
-                elif [ "${{ runner.os }}" == "macOS" ]; then
-                  brew install python-tk
-                fi
+                brew install python-tk
 
             - name: Install my project
               run: uv sync --locked --all-extras --dev
@@ -43,5 +35,5 @@ jobs:
             - name: Upload compiled program
               uses: actions/upload-artifact@v6
               with:
-                name: Neuron-${{ matrix.os }}
+                name: Neuron-${{ runner.os }}
                 path: Neuron.dist
