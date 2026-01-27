@@ -221,7 +221,7 @@ class DataProcessor:
 
     def prepare_ratiometric_data(self, file: Path, smoothing_window: int, corr: str) -> tuple[list[str], np.ndarray]:
         """Reads data from Fura2 measurements, then performs background substraction, smoothing, and photobleaching
-        correction. Saves processed data to a .feather file as well as returning it.
+        correction. Saves processed data to a pickle file as well as returning it.
 
         Args:
             file (Path): The measurement file's path.
@@ -272,7 +272,7 @@ class DataProcessor:
     
     def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int, corr: str) -> tuple[list[str], np.ndarray]:
         """Reads data from measurements non-ratiometric dyes such as Fluo4, then performs background substraction,
-        smoothing, and photobleaching correction. Saves processed data to a .feather file as well as returning it.
+        smoothing, and photobleaching correction. Saves processed data to a pickle file as well as returning it.
 
         Args:
             file (Path): The measurement file's path.
@@ -315,7 +315,7 @@ class DataProcessor:
             count.set(count.get() + 1)
 
     def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray | None) -> None:
-        """Saves processed Ca traces and photobleaching correction coefficients to .feather files in the cache.
+        """Saves processed Ca traces and photobleaching correction coefficients to pickle files in the cache.
 
         Args:
             file (Path): The measurement file's path.
@@ -336,7 +336,7 @@ class DataProcessor:
             sheet_name: str = "Processed"
         
         df = pd.DataFrame(data, columns=col_names)
-        df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet_name}.feather")
+        df.to_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet_name}.pkl")
         
         if coeffs is not None:
             if ratio:
@@ -345,10 +345,10 @@ class DataProcessor:
                 first_col = first_col[:, np.newaxis]
                 coeffs = np.hstack((first_col, coeffs))
                 df = pd.DataFrame(coeffs, columns=col_names)
-                df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
+                df.to_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.pkl")
             else:
                 df = pd.DataFrame(coeffs, columns=col_names)
-                df.to_feather(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.feather")
+                df.to_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Coeffs.pkl")
             # If we're not using a ratiometric dye, we only have one set of coefficients, but if we are using Fura, then we
             # have two, and we should save which is which.
 

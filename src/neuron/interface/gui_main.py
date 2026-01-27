@@ -218,7 +218,7 @@ class MainWindow:
         """Changes the window size to indicate work is in progress then calls the conversion method to convert all
         measurement files from Excel to the cached format.
         """
-        worker_thread = Thread(target=self.conversion, args=("feather",))
+        worker_thread = Thread(target=self.conversion, args=("pickle",))
         worker_thread.start() # conversion is in a new thread so we can update and display the progress tracker
 
     def to_excel_button_press(self) -> None:
@@ -229,19 +229,19 @@ class MainWindow:
         worker_thread.start() # conversion is in a new thread so we can update and display the progress tracker
 
     def conversion(self, target: str) -> None:
-        """Performs the actual conversion work between Excel files and the cached .feather format.
+        """Performs the actual conversion work between Excel files and the cached pickled format.
 
         Args:
-            target (str): "feather" or "excel", indicates the direction of conversion
+            target (str): "pickle" or "excel", indicates the direction of conversion
         """
-        assert target in {"feather", "excel"} # should never fail
+        assert target in {"pickle", "excel"} # should never fail
         previous_mode = self.current_mode.get() # what the app looked like before
         self.current_mode.set("analysis")
         self.button_frame.place(x=OFFSCREEN_X)
         self.tracker_frame.place(x=0, y=MAIN_BUTTON_Y, width=460, height=230)
         self.in_progress_label.config(text="Converting...")
 
-        if target == "feather":
+        if target == "pickle":
             self.converter.convert_to_pickle(self.finished_file_counter)
         else:
             self.converter.convert_to_excel(self.finished_file_counter)

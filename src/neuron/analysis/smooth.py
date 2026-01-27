@@ -1,6 +1,7 @@
 import numpy as np
 import math
 
+# This is no longer used, because I replaced it with a Cython version. Keeping this version just in case.
 
 def smooth(array: np.ndarray, window_size: int = 5) -> np.ndarray:
     """This function performs a sliding window type smoothing on an array representing an individual Ca trace.

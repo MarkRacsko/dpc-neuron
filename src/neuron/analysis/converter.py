@@ -11,7 +11,7 @@ CACHE_NAME = ".cache"
 
 class Converter:
     """Serves the purpose of creating and managing a cache from the input measurement files because reading Excel with
-    pandas is painfully slow compared to feather or other binary file formats.
+    pandas is painfully slow compared to pickle or other binary file formats.
     """
     def __init__(self, folder: Path, report_name: str) -> None:
         self.target_folder = folder.absolute()
@@ -75,7 +75,7 @@ class Converter:
                 file_data = pd.read_pickle(cache_path / file_name)
                 
                 file_name, sheet_name = file_name.split(sep=NAME_SHEET_SEP)
-                sheet_name = sheet_name.rstrip(".feather")
+                sheet_name = sheet_name.rstrip(".pkl")
 
                 if file_name in excel_data:
                     excel_data[file_name].append((sheet_name, file_data))
