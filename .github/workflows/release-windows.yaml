@@ -25,7 +25,14 @@ jobs:
               # meant to package the whole project, but here I only use it for this one file
 
             - name: Compile project with Nuitka
-              run: uv run nuitka --standalone src/neuron/main.py -o Neuron --enable-plugins=tk-inter
+              run: |
+                uv run python -m nuitka \
+                --mode=standalone \
+                src/neuron/main.py \
+                --enable-plugins=tk-inter \
+                --assume-yes-for-downloads \
+                --output-folder-name=Neuron-app \
+                --output-filename=Analyzer.exe
 
             - name: Rename .dist folder
               run: mv main.dist Neuron-app
