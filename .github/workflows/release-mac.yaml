@@ -30,14 +30,25 @@ jobs:
               # meant to package the whole project, but here I only use it for this one file
 
             - name: Compile project with Nuitka
-              run: uv run nuitka --standalone src/neuron/main.py -o Neuron --enable-plugins=tk-inter
-              # fails because one of our dependencies does not support arm64
+              shell: bash
+              run: |
+                uv run python -m nuitka \
+                --standalone \
+                src/neuron/main.py \
+                --enable-plugins=tk-inter \
+                --assume-yes-for-downloads \
+                --output-folder-name=Neuron-app \
+                --output-filename=Analyzer
 
-            - name: Rename .dist folder
-              run: mv main.dist Neuron-app
+            - name: Copy the License and README
+              shell: bash
+              run: |
+                cp LICENSE Neuron-app.dist/LICENSE.txt
+                cp README.md Neuron-app.dist/README.md
+
 
             - name: Upload compiled program
               uses: actions/upload-artifact@v6
               with:
                 name: Neuron-${{ runner.os }}
-                path: Neuron-app
+                path: Neuron-app.dist

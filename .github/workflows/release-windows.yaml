@@ -35,6 +35,12 @@ jobs:
                 --output-folder-name=Neuron-app \
                 --output-filename=Analyzer.exe
 
+            - name: Copy the License and README
+              shell: bash
+              run: |
+                cp LICENSE Neuron-app.dist/LICENSE.txt
+                cp README.md Neuron-app.dist/README.md
+
             - name: Upload compiled program
               uses: actions/upload-artifact@v6
               with:
