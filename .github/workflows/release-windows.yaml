@@ -25,9 +25,10 @@ jobs:
               # meant to package the whole project, but here I only use it for this one file
 
             - name: Compile project with Nuitka
+              shell: bash
               run: |
                 uv run python -m nuitka \
-                --mode=standalone \
+                --standalone \
                 src/neuron/main.py \
                 --enable-plugins=tk-inter \
                 --assume-yes-for-downloads \
