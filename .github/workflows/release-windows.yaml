@@ -34,9 +34,6 @@ jobs:
                 --output-folder-name=Neuron-app \
                 --output-filename=Analyzer.exe
 
-            - name: Rename .dist folder
-              run: mv main.dist Neuron-app
-
             - name: Upload compiled program
               uses: actions/upload-artifact@v6
               with:
