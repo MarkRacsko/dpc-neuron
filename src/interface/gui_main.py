@@ -155,7 +155,7 @@ class MainWindow:
 
     def update_counter(self, *args) -> None:
         """Called whenever the value of the finished_file_counter IntVar is written to (by a SubDir instance, indicating
-         it finished processing a file).
+        it finished processing a file).
         """
         self.finished_number_label.config(text=str(self.finished_file_counter.get()))
 
@@ -180,9 +180,9 @@ class MainWindow:
 
     def analysis_work(self, mode: str) -> None:
         """Encapsulates all the data processing work that needs to run in a separate thread. (So that we can update and
-         display the progress indicator.)
+        display the progress indicator.)
 
-         Args:
+        Args:
             mode (str): The display mode of the program that should be restored when this function finishes its work.
         """
         self.in_progress_label.config(text="Converting files...")
@@ -223,7 +223,7 @@ class MainWindow:
 
     def to_excel_button_press(self) -> None:
         """Changes the window size to indicate work is in progress then calls the conversion method to convert all
-       cached files from the cached format back to Excel.
+        cached files from the cached format back to Excel.
         """
         worker_thread = Thread(target=self.conversion, args=("excel",))
         worker_thread.start() # conversion is in a new thread so we can update and display the progress tracker

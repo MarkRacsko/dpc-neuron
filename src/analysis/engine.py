@@ -55,9 +55,9 @@ class AnalysisEngine:
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
-        arg_tuple = (self.finished_files,
-                     errors)
+        arg_tuple = (self.finished_files, errors)
         threads = []
+        
         for processor in self._processors:
             thread = Thread(target=processor.make_report, args=arg_tuple)
             threads.append(thread)

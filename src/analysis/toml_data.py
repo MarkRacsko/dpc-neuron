@@ -55,7 +55,7 @@ class Metadata:
     def __init__(self, metadata_as_dict: dict[str, dict[str, Any]]):
         conditions_section = metadata_as_dict["conditions"]
         self.conditions = Conditions(conditions_section["ratiometric_dye"],
-                                     conditions_section["framerate"],
+                                    conditions_section["framerate"],
                                     conditions_section["group1"],
                                     conditions_section["group2"])
         
