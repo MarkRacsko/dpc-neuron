@@ -33,7 +33,8 @@ jobs:
                 --enable-plugins=tk-inter \
                 --include-package=pandas \
                 --assume-yes-for-downloads \
-                --output-filename=Analyzer.exe
+                --output-filename=Analyzer.exe \
+                --windows-console-mode=disable
 
             - name: Copy the License and README
               shell: bash
