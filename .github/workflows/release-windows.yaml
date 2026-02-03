@@ -14,11 +14,11 @@ jobs:
               uses: astral-sh/setup-uv@v7
 
             - name: Install my project
-              run: uv sync --locked --all-extras --dev
+              run: uv sync --locked --all-extras
 
             - name: AOT compile smoothing function
               run: |
-                cd src/neuron/analysis/compiled
+                cd src/analysis/compiled
                 uv run compile_smooth.py build_ext --inplace
                 cd ../../../..
               # looks dumb, but there is a reason for it: having a setup.py at the project root would imply it's
@@ -29,20 +29,20 @@ jobs:
               run: |
                 uv run python -m nuitka \
                 --standalone \
-                src/neuron/main.py \
+                src/main.py \
                 --enable-plugins=tk-inter \
+                --include-package=pandas \
                 --assume-yes-for-downloads \
-                --output-folder-name=Neuron-app \
                 --output-filename=Analyzer.exe
 
             - name: Copy the License and README
               shell: bash
               run: |
-                cp LICENSE Neuron-app.dist/LICENSE.txt
-                cp README.md Neuron-app.dist/README.md
+                cp LICENSE main.dist/LICENSE.txt
+                cp README.md main.dist/README.md
 
             - name: Upload compiled program
               uses: actions/upload-artifact@v6
               with:
                 name: Neuron-${{ runner.os }}
-                path: Neuron-app.dist
+                path: main.dist
