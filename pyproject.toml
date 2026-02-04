@@ -1,6 +1,6 @@
 [project]
 name = "neuron"
-version = "1.0"
+version = "1.0.1"
 description = "Helps analyze data for my Ca measurement microscopy workflows. Determines what agonists cells reacted to and how strongly."
 readme = "README.md"
 requires-python = ">=3.12"

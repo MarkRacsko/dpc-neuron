@@ -1,6 +1,6 @@
 # dpc-neuron
 
-This project is meant to help me and my colleagues analyze and visualize results from my dental pulp - sensory neuron coculture experiments and from Ca measurement microscopy workflows in general.
+This project is meant to help me and my colleagues analyze and visualize results from my dental pulp - sensory neuron co-culture experiments and from Ca measurement microscopy workflows in general.
 
 # Installation
 Pre-built binary releases that do not require anything else to be installed are available for Windows and Linux. Go to Releases and download the appropriate one. The main executable will be called Analyzer.exe (or just Analyzer on Linux).
@@ -16,7 +16,7 @@ If you're on macOS or the pre-built release doesn't work, you can always run the
 6. To run my program, go two directories up (`cd ../..`) to src/neuron and run `uv run main.py`
 
 # Usage
-The program takes a folder as its input and expects data from individual measurements to be grouped into subfolders within this folder. (All data from one day of experiments goes in one subfolder for me, but this is not mandatory, only the structure is.) Experimental conditions are described by a metadata.toml file that must be present in every subfolder to be processed. Processing configurations are set by a config.toml file, located in the same folder as this README and the Python files. The expected contents of these files are described further below.
+The program takes a folder as its input and expects data from individual measurements to be grouped into subfolders within this folder. (All data from one day of experiments goes in one subfolder for me, but this is not mandatory, only the structure is.) Experimental conditions are described by a metadata.toml file that must be present in every subfolder to be processed. Processing configurations are set by a config.toml file, located in the same folder as the main executable. The expected contents of these files are described further below.
 
 ## The graphical interface
 The analysis tasks to be performed are set using checkboxes, namely:
@@ -29,7 +29,7 @@ The GUI also comes with an editor for the program's config file and the experime
 
 The bottom row of the 6 main buttons allows you to convert Excel files to and from the cache (explained further below), or delete the existing one. (Which is necessary if you've changed the Excel files in any folder, or added new ones.) If you've added new folders with measurements in them, manually pressing the "Convert to cache" button is not actually needed, the program will automatically perform this conversion when necessary.
 
-## How to use the .toml files
+## How to manually edit the .toml files
 Tom's Obvious, Minimal Language (toml) is a simple file format for configuration files, editable by any text editor such as Windows Notepad. A toml file is (can be) divided into sections, each of which can have their own subsections. Subsections may be indented for the sake of clarity, but this is not required. Sections are delineated by their name in square brackets, like this: [section_name], while subsections are marked by [section_name.subsection_name]. The actual configuration data is stored as key-value pairs, like this:
 
 key_1 = "value_1"  
@@ -37,7 +37,7 @@ key_2 = 2
 
 When editing one of these files, only change the values, not the names of the keys. Subsections within the treatment section of the metadata file can be renamed, but other section headers cannot.
 
-### The main config file
+## The main config file
 This file must be in the same folder as the main executable, and is automatically created from a template if it does not exist. It consists of 2 sections:
 - input:
     - target_folder: The default option for the processing target
@@ -52,7 +52,7 @@ This file must be in the same folder as the main executable, and is automaticall
     - report_name: The final file name for subfolder level reports will be constructed from this name, the name of this subfolder, and the .xlsx extension.
     - summary_name: The final file name for the overall summary report.
 
-### The metadata files
+## The metadata files
 These have 2 sections:
 - conditions:
     - ratiometric_dye: "true" if you're using Fura2 and "false" otherwise.
@@ -66,6 +66,6 @@ Note: The reason an agonist's end value and the next agonist's begin value **can
 Reading Excel files into pandas DataFrames is dreadfully slow, so I've implemented a caching mechanism to convert Excel files to a more performant file format, and work with those. When the program first encounters a measurement (= a subfolder in the target folder), it reads all measurement files there and converts them into this faster format, storing them in a .cache folder. Do not touch this folder, unless you want to force the program to re-read the Excel files, in which case you should delete the .cache folder, there is a button in the graphical user interface to do so. (In case you've added or replaced some measurement files. The program does not individually track which files have been cached.)
 
 # Technical notes
-- There is no macOS binary release because one of the libraries my program depends on failed to compile on macOS. I'm willing to fix it if someone asks.
-- The smoothing function is compiled ahead of time using cython to improve performance. Previously I was using Numba, but the Nuitka compiler doesn't like Numba so I used Cython instead.
+- There is no macOS binary release because one of the libraries my program depends on failed to compile on macOS. I'm willing to attempt fixing it if someone asks.
+- The smoothing function is compiled ahead of time using Cython to improve performance. Previously I was using the JIT compilation with Numnba, but Cython is better if we're also using Nuitka.
 - The compilation script using setuptools is in the same folder as the smoothing function's file. I know a setup.py at the project's root is more conventional, but that would imply it's meant to compile/install the whole project. Which is not what mine does, hence its location.
