@@ -67,5 +67,6 @@ Reading Excel files into pandas DataFrames is dreadfully slow, so I've implement
 
 # Technical notes
 - There is no macOS binary release because one of the libraries my program depends on failed to compile on macOS. I'm willing to attempt fixing it if someone asks.
-- The smoothing function is compiled ahead of time using Cython to improve performance. Previously I was using the JIT compilation with Numnba, but Cython is better if we're also using Nuitka.
+- By "binary release for Linux", I mean specifically Ubuntu. If you're on an Ubuntu derivative distro, it will probably work.
+- The smoothing function is compiled ahead of time using Cython to improve performance. Previously I was using JIT compilation with Numba, but Cython is better if we're also using Nuitka.
 - The compilation script using setuptools is in the same folder as the smoothing function's file. I know a setup.py at the project's root is more conventional, but that would imply it's meant to compile/install the whole project. Which is not what mine does, hence its location.
