@@ -17,6 +17,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pylsp-rope>=0.1.17",
     "pytest>=8.4.1",
+    "python-lsp-ruff>=2.3.1",
+    "python-lsp-server>=1.14.0",
     "snakeviz>=2.2.2",
+    "websockets>=16.0",
 ]
