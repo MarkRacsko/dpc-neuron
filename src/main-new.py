@@ -9,12 +9,14 @@ def _(mo):
     mo.md(r"""
     # TODO
 
-    1. Get a metadata.toml file from home
-    2. remove_row button
-    3. Add folder selection to the metadata tab, build a blank metadata file from template, if no metadata file exists.
-    4. Setting the initial state by reading the contents of the metadata.toml file
-    5. Implement saving the file.
-    6. Figure out how to make the metadata file selector's initial path be the folder selected by target_folder
+    1. Implement reading config from file
+    2. Get a metadata.toml file from home
+    3. remove_row button
+    4. Add folder selection to the metadata tab, build a blank metadata file from template, if no metadata file exists.
+    5. Setting the initial state by reading the contents of the metadata.toml file
+    6. Implement saving the file.
+    7. Figure out how to make the metadata file selector's initial path be the folder selected by target_folder
+    8. Build the main panel with the 6 buttons, hook them up to the data processing backend
     """)
     return
 
