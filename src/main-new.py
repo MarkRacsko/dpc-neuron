@@ -58,7 +58,7 @@ def _(add_btn, get_rows, mo, remove_btn, set_rows):
 def _():
     import marimo as mo
     import yaml
-    from interface.gui_constants import CONFIG_TEMPLATE
+    from interface.gui_constants import CONFIG_TEMPLATE, METADATA_TEMPLATE
     from analysis.toml_data import Config
 
     return Config, mo, yaml
@@ -159,8 +159,7 @@ def _(config: "Config", mo, save_config):
     smoothing_range = mo.ui.number(label="Smoothing range:",
                                    start=1, stop=15, step=2,
                                    value=config.input.smoothing_range)
-    photo_corr = mo.ui.switch(value=True if config.input.correction == "True" else False)
-    # Okay this is programming horror territory for real now, I need to fix this design blemish
+    photo_corr = mo.ui.switch(value=config.input.correction)
 
     report_name = mo.ui.text(label="Report filename:", value=config.output.report_name)
     summary_name = mo.ui.text(label="Summary filename:", value=config.output.summary_name)
@@ -200,7 +199,6 @@ def _(mo):
     mo.md(r"""
     # TODO
 
-    - Change config and metadata to store bools instead of strings
     - Add folder selection to the metadata tab, build a blank metadata file from template, if no metadata file exists.
     - Setting the initial state by reading the contents of the metadata.toml file
     - Implement saving the file.

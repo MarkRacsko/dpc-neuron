@@ -49,7 +49,7 @@ CONFIG_TEMPLATE = {
         "smoothing_range": 5,
         "amp_threshold": 0.3,
         "cv_threshold": 0.1,
-        "correction": "True"
+        "correction": True
     },
     "output": {
         "report_name": "report_",
@@ -60,7 +60,7 @@ CONFIG_TEMPLATE = {
 # this is used to create new metadata if the user selects a folder without a metadata.toml file
 METADATA_TEMPLATE = {
     "conditions": {
-        "ratiometric_dye": "true",
+        "ratiometric_dye": True,
         "framerate": 60,
         "group1": "",
         "group2": ""

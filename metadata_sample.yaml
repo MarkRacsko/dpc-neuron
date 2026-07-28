@@ -1,7 +1,7 @@
 conditions:
   group1: kontrol
   group2: X3
-  ratiometric_dye: 'Yes'
+  ratiometric_dye: true
 treatments:
   AITC:
     begin: 60

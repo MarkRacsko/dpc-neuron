@@ -43,7 +43,7 @@ class Input:
     smoothing_range: int
     amp_threshold: float
     cv_threshold: float
-    correction: str
+    correction: bool
 
 @dataclass
 class Output:
@@ -77,7 +77,7 @@ class Metadata:
 
 @dataclass
 class Conditions:
-    ratiometric_dye: str
+    ratiometric_dye: bool
     framerate: int
     group1: str
     group2: str
