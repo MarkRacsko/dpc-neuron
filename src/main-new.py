@@ -59,9 +59,10 @@ def _():
     import marimo as mo
     import yaml
     from interface.gui_constants import CONFIG_TEMPLATE, METADATA_TEMPLATE
-    from analysis.toml_data import Config
+    from analysis.toml_data import Config, Metadata
+    from pathlib import Path
 
-    return Config, mo, yaml
+    return Config, METADATA_TEMPLATE, Metadata, Path, mo, yaml
 
 
 @app.cell
@@ -129,7 +130,7 @@ def _(
 
 
 @app.cell
-def _(config: "Config", mo, save_config):
+def _(config: "Config", load_metadata, mo, save_config):
     # UI element definitions
     actions_explanation = """
     To inspect or change global config settings that apply to all measurements, go to the Config tab. You can save these settings to a file, from which they will be re-loaded next time. Individual measurement parameters are read from files as well, each measurement's folder is supposed to contain a metadata.toml file. You can use the Metadata tab to create, edit, and save these. If no metadata file exists in the selected folder, the default settings are loaded from a template, but file saving is **not** automatic. You need to save each metadata file manually.
@@ -165,7 +166,7 @@ def _(config: "Config", mo, save_config):
     summary_name = mo.ui.text(label="Summary filename:", value=config.output.summary_name)
 
     # METADATA
-    metadata_file = mo.ui.file_browser(label="Measurement folder:", selection_mode="directory", multiple=False)
+    metadata_file = mo.ui.file_browser(label="Measurement folder:", selection_mode="directory", multiple=False, on_change=load_metadata)
     ratiometric = mo.ui.switch()
     framerate = mo.ui.number(label="Framerate", start=1, stop=1000, value=60)
     frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=300)
@@ -199,7 +200,6 @@ def _(mo):
     mo.md(r"""
     # TODO
 
-    - Add folder selection to the metadata tab, build a blank metadata file from template, if no metadata file exists.
     - Setting the initial state by reading the contents of the metadata.toml file
     - Implement saving the file.
     - Figure out how to make the metadata file selector's initial path be the folder selected by target_folder
@@ -211,7 +211,7 @@ def _(mo):
 
 
 @app.cell
-def _(Config, yaml):
+def _(Config, METADATA_TEMPLATE, Metadata, yaml):
     def load_config() -> Config:
         with open("config.yaml", "r") as f:
             config_dict = yaml.safe_load(f)
@@ -220,12 +220,31 @@ def _(Config, yaml):
         return config
 
     config: Config = load_config()
+    metadata: Metadata = Metadata(METADATA_TEMPLATE)
 
     def save_config(_) -> None:
         with open("config.yaml", "w") as f:
             yaml.dump(config.to_dict(), f)
 
     return config, save_config
+
+
+@app.cell
+def _(Path, yaml):
+    def load_metadata(path):
+        # path is a Sequence of paths, because that's how the mo.ui.file_browser object works
+        selected_folder = Path(path[0])
+        metadata_path = selected_folder / "metadata.yaml"
+
+        if metadata_path.exists():
+            with open(metadata_path, "r") as f:
+                loaded_metadata = yaml.safe_load(f)
+                # metadata.update(loaded_metadata)
+                # I need to write this update method, but this is my idea for loading the metadata
+        else:
+            pass # because if there is no metadata file, we want to use the template, which is already there
+
+    return (load_metadata,)
 
 
 if __name__ == "__main__":
