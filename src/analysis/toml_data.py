@@ -56,6 +56,7 @@ class Metadata:
         conditions_section = metadata_as_dict["conditions"]
         self.conditions = Conditions(conditions_section["ratiometric_dye"],
                                     conditions_section["framerate"],
+				    conditions_section["frame_number"],
                                     conditions_section["group1"],
                                     conditions_section["group2"])
         
@@ -79,6 +80,7 @@ class Metadata:
 class Conditions:
     ratiometric_dye: bool
     framerate: int
+    frame_number: int
     group1: str
     group2: str
 

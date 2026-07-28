@@ -59,7 +59,7 @@ def _():
     import marimo as mo
     import yaml
     from interface.gui_constants import CONFIG_TEMPLATE, METADATA_TEMPLATE
-    from analysis.toml_data import Config, Metadata
+    from analysis.toml_data import Config, Metadata, Treatments
     from pathlib import Path
 
     return Config, METADATA_TEMPLATE, Metadata, Path, mo, yaml
@@ -130,7 +130,14 @@ def _(
 
 
 @app.cell
-def _(config: "Config", load_metadata, mo, save_config):
+def _(
+    Metadata,
+    config: "Config",
+    get_metadata,
+    load_metadata,
+    mo,
+    save_config,
+):
     # UI element definitions
     actions_explanation = """
     To inspect or change global config settings that apply to all measurements, go to the Config tab. You can save these settings to a file, from which they will be re-loaded next time. Individual measurement parameters are read from files as well, each measurement's folder is supposed to contain a metadata.toml file. You can use the Metadata tab to create, edit, and save these. If no metadata file exists in the selected folder, the default settings are loaded from a template, but file saving is **not** automatic. You need to save each metadata file manually.
@@ -166,12 +173,14 @@ def _(config: "Config", load_metadata, mo, save_config):
     summary_name = mo.ui.text(label="Summary filename:", value=config.output.summary_name)
 
     # METADATA
+    metadata: Metadata = get_metadata()
+
     metadata_file = mo.ui.file_browser(label="Measurement folder:", selection_mode="directory", multiple=False, on_change=load_metadata)
-    ratiometric = mo.ui.switch()
-    framerate = mo.ui.number(label="Framerate", start=1, stop=1000, value=60)
-    frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=300)
-    group_1 = mo.ui.text(label="Group 1:")
-    group_2 = mo.ui.text(label="Group 2:")
+    ratiometric = mo.ui.switch(value=metadata.conditions.ratiometric_dye)
+    framerate = mo.ui.number(label="Framerate", start=1, stop=1000, value=metadata.conditions.framerate)
+    frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=metadata.conditions.frame_number)
+    group_1 = mo.ui.text(label="Group 1:", value=metadata.conditions.group1)
+    group_2 = mo.ui.text(label="Group 2:", value=metadata.conditions.group2)
     return (
         SD_mult,
         actions_explanation,
@@ -211,7 +220,7 @@ def _(mo):
 
 
 @app.cell
-def _(Config, METADATA_TEMPLATE, Metadata, yaml):
+def _(Config, METADATA_TEMPLATE, Metadata, mo, yaml):
     def load_config() -> Config:
         with open("config.yaml", "r") as f:
             config_dict = yaml.safe_load(f)
@@ -219,18 +228,19 @@ def _(Config, METADATA_TEMPLATE, Metadata, yaml):
         config = Config(False, config_dict)
         return config
 
-    config: Config = load_config()
-    metadata: Metadata = Metadata(METADATA_TEMPLATE)
-
     def save_config(_) -> None:
         with open("config.yaml", "w") as f:
             yaml.dump(config.to_dict(), f)
 
-    return config, save_config
+    config: Config = load_config()
+
+    get_metadata, set_metadata = mo.state(Metadata(METADATA_TEMPLATE))
+    # this is necessary because we need to update the loaded values whenever a new folder is selected
+    return config, get_metadata, save_config, set_metadata
 
 
 @app.cell
-def _(Path, yaml):
+def _(METADATA_TEMPLATE, Metadata, Path, set_metadata, yaml):
     def load_metadata(path):
         # path is a Sequence of paths, because that's how the mo.ui.file_browser object works
         selected_folder = Path(path[0])
@@ -239,10 +249,9 @@ def _(Path, yaml):
         if metadata_path.exists():
             with open(metadata_path, "r") as f:
                 loaded_metadata = yaml.safe_load(f)
-                # metadata.update(loaded_metadata)
-                # I need to write this update method, but this is my idea for loading the metadata
+                set_metadata(Metadata(loaded_metadata))
         else:
-            pass # because if there is no metadata file, we want to use the template, which is already there
+            set_metadata(Metadata(METADATA_TEMPLATE))
 
     return (load_metadata,)
 

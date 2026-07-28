@@ -1,4 +1,6 @@
 conditions:
+  framerate: 60
+  frame_number: 600
   group1: kontrol
   group2: X3
   ratiometric_dye: true

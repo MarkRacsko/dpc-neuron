@@ -62,6 +62,7 @@ METADATA_TEMPLATE = {
     "conditions": {
         "ratiometric_dye": True,
         "framerate": 60,
+	"frame_number": 600,
         "group1": "",
         "group2": ""
     },
