@@ -1,0 +1,14 @@
+conditions:
+  group1: kontrol
+  group2: X3
+  ratiometric_dye: 'Yes'
+treatments:
+  AITC:
+    begin: 60
+    end: 300
+  KCl:
+    begin: 300
+    end: 360
+  baseline:
+    begin: 0
+    end: 60

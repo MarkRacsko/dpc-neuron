@@ -57,11 +57,11 @@ def _(add_btn, get_rows, mo, remove_btn, set_rows):
 @app.cell
 def _():
     import marimo as mo
-    import toml
+    import yaml
     from interface.gui_constants import CONFIG_TEMPLATE
     from analysis.toml_data import Config
 
-    return Config, mo, toml
+    return Config, mo, yaml
 
 
 @app.cell
@@ -200,7 +200,6 @@ def _(mo):
     mo.md(r"""
     # TODO
 
-    - Change config and metadata format to yaml
     - Change config and metadata to store bools instead of strings
     - Add folder selection to the metadata tab, build a blank metadata file from template, if no metadata file exists.
     - Setting the initial state by reading the contents of the metadata.toml file
@@ -214,10 +213,10 @@ def _(mo):
 
 
 @app.cell
-def _(Config, toml):
+def _(Config, yaml):
     def load_config() -> Config:
-        with open("config.toml", "r") as f:
-            config_dict = toml.load(f)
+        with open("config.yaml", "r") as f:
+            config_dict = yaml.safe_load(f)
 
         config = Config(False, config_dict)
         return config
@@ -225,8 +224,8 @@ def _(Config, toml):
     config: Config = load_config()
 
     def save_config(_) -> None:
-        with open("config.toml", "w") as f:
-            toml.dump(config.to_dict(), f)
+        with open("config.yaml", "w") as f:
+            yaml.dump(config.to_dict(), f)
 
     return config, save_config
 
