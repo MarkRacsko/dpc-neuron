@@ -23,7 +23,7 @@ def _(mo):
 
     def add_row(_):
         current_rows = get_rows()
-        set_rows(current_rows + [{"name": "New", "range": (0, 50)}])
+        set_rows(current_rows + [{"name": "New", "range": [0, 50]}])
 
     def remove_row(_):
         current_rows = get_rows()
@@ -36,11 +36,19 @@ def _(mo):
 
 
 @app.cell
-def _(add_btn, get_rows, mo, remove_btn, set_rows):
+def _(
+    add_btn,
+    get_rows,
+    metadata: "Metadata",
+    mo,
+    remove_btn,
+    save_metadata_btn,
+    set_rows,
+):
     ui_container = mo.ui.array([
         mo.ui.dictionary({
             "name": mo.ui.text(value=row["name"]),
-            "range": mo.ui.range_slider(0, 200, value=row["range"], full_width=True)
+            "range": mo.ui.range_slider(0, metadata.conditions.frame_number, value=row["range"], full_width=True)
         })
         for row in get_rows()
     ], on_change=set_rows)
@@ -50,7 +58,7 @@ def _(add_btn, get_rows, mo, remove_btn, set_rows):
         for row in ui_container
     ])
 
-    treatment_stack = mo.vstack([rows_layout, mo.hstack([add_btn, remove_btn], justify="start")])
+    treatment_stack = mo.vstack([rows_layout, mo.hstack([add_btn, remove_btn, save_metadata_btn], justify="start")])
     return (treatment_stack,)
 
 
@@ -62,7 +70,7 @@ def _():
     from analysis.toml_data import Config, Metadata, Treatments
     from pathlib import Path
 
-    return Config, METADATA_TEMPLATE, Metadata, Path, mo, yaml
+    return Config, METADATA_TEMPLATE, Metadata, Path, Treatments, mo, yaml
 
 
 @app.cell
@@ -113,7 +121,7 @@ def _(
 
     # Metadata tab
     tab2 = mo.vstack([
-        mo.md(text="##Placeholder..."),
+        mo.md(text="##Measurement folder:"),
         metadata_file,
         mo.md(text="##Conditions"),
         mo.hstack([mo.md(text="Ratiometric dye:"), ratiometric], justify="start"),
@@ -134,9 +142,9 @@ def _(
     Metadata,
     config: "Config",
     get_metadata,
-    load_metadata,
     mo,
     save_config,
+    update_frame_number,
 ):
     # UI element definitions
     actions_explanation = """
@@ -175,10 +183,9 @@ def _(
     # METADATA
     metadata: Metadata = get_metadata()
 
-    metadata_file = mo.ui.file_browser(label="Measurement folder:", selection_mode="directory", multiple=False, on_change=load_metadata)
     ratiometric = mo.ui.switch(value=metadata.conditions.ratiometric_dye)
     framerate = mo.ui.number(label="Framerate", start=1, stop=1000, value=metadata.conditions.framerate)
-    frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=metadata.conditions.frame_number)
+    frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=metadata.conditions.frame_number, on_change=update_frame_number)
     group_1 = mo.ui.text(label="Group 1:", value=metadata.conditions.group1)
     group_2 = mo.ui.text(label="Group 2:", value=metadata.conditions.group2)
     return (
@@ -192,7 +199,7 @@ def _(
         framerate,
         group_1,
         group_2,
-        metadata_file,
+        metadata,
         method,
         photo_corr,
         ratiometric,
@@ -204,13 +211,30 @@ def _(
     )
 
 
+@app.cell
+def _(load_metadata, mo):
+    file_browser_label = "Click on a name to enter that folder, click on a folder icon to select it. You can only select one at a time. "
+    metadata_file = mo.ui.file_browser(label=file_browser_label, selection_mode="directory", multiple=False, on_change=load_metadata)
+    return (metadata_file,)
+
+
+@app.cell
+def _(get_metadata, set_metadata):
+    def update_frame_number(n):
+        current_metadata = get_metadata()
+        current_metadata.conditions.frame_number = n
+        set_metadata(current_metadata)
+
+    return (update_frame_number,)
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     # TODO
 
-    - Setting the initial state by reading the contents of the metadata.toml file
-    - Implement saving the file.
+    - Disentangle the DAG so the metadata file browser is not constantly re-rendered and re-run
+    - ~~Implement saving the file.~~ make it work
     - Figure out how to make the metadata file selector's initial path be the folder selected by target_folder
     - ~~Build the main panel with the 4 buttons~~, hook them up to the data processing backend
     - Add a progress bar to provide feedback on data analysis and file conversions.
@@ -240,10 +264,20 @@ def _(Config, METADATA_TEMPLATE, Metadata, mo, yaml):
 
 
 @app.cell
-def _(METADATA_TEMPLATE, Metadata, Path, set_metadata, yaml):
-    def load_metadata(path):
-        # path is a Sequence of paths, because that's how the mo.ui.file_browser object works
-        selected_folder = Path(path[0])
+def _(
+    METADATA_TEMPLATE,
+    Metadata,
+    Path,
+    Treatments,
+    get_metadata,
+    get_rows,
+    set_metadata,
+    set_rows,
+    yaml,
+):
+    def load_metadata(tuple_of_selected_paths):
+        # mo.ui.file_browser passes a tuple of FileBrowserFileInfo objects to its callback function
+        selected_folder = Path(tuple_of_selected_paths[0].path)
         metadata_path = selected_folder / "metadata.yaml"
 
         if metadata_path.exists():
@@ -253,7 +287,45 @@ def _(METADATA_TEMPLATE, Metadata, Path, set_metadata, yaml):
         else:
             set_metadata(Metadata(METADATA_TEMPLATE))
 
-    return (load_metadata,)
+        translate_treatments_to_rows()
+
+    def translate_rows_to_treatments():
+        rows = get_rows()
+        current_metadata = get_metadata()
+        new_treatments_obj = Treatments()
+
+        for row in rows:
+            begin, end = row["range"] # we are unpacking a 2 item list, so this is fine
+            new_treatments_obj[row["name"]] = (begin, end)
+
+        current_metadata.treatments = new_treatments_obj
+        set_metadata(current_metadata)
+
+    def translate_treatments_to_rows():
+        current_metadata = get_metadata()
+        rows = []
+        for name, treatment in current_metadata.treatments.items():
+            rows.append({"name": name, "range": [*treatment.values]})
+            # treatment.values returns a tuple of the begin and end value, and I'm unpacking those into the range list
+        set_rows(rows)
+
+    return load_metadata, translate_rows_to_treatments
+
+
+@app.cell
+def _(get_metadata, metadata_file, mo, translate_rows_to_treatments, yaml):
+    def save_metadata(_):
+        metadata_path = metadata_file.value[0].path / "metadata.yaml"
+        translate_rows_to_treatments()
+
+        current_metadata = get_metadata()
+        metadata_dict = current_metadata.to_dict()
+
+        with open(metadata_path, "w") as f:
+            yaml.dump(metadata_dict, f)
+
+    save_metadata_btn = mo.ui.button(label="Save metadata", on_click=save_metadata)
+    return (save_metadata_btn,)
 
 
 if __name__ == "__main__":
