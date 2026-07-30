@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.15"
 app = marimo.App(width="medium")
 
 
@@ -233,12 +233,20 @@ def _(mo):
     mo.md(r"""
     # TODO
 
+    ## Port existing functionality to marimo:
     - Disentangle the DAG so the metadata file browser is not constantly re-rendered and re-run
     - ~~Implement saving the file.~~ make it work
     - Figure out how to make the metadata file selector's initial path be the folder selected by target_folder
     - ~~Build the main panel with the 4 buttons~~, hook them up to the data processing backend
     - Add a progress bar to provide feedback on data analysis and file conversions.
     - Reconsider the program's architecture and general behavior. It may be better for repeated analysis with different settings to keep all input data in memory, instead of re-reading cached files. I don't remember exactly why I chose this design, and it may well be the correct one, but I will need to think about this more.
+
+    ## New functionality to implement:
+    - Use mo.ui.dataframe and/or mo.ui.data_explorer widget(s) to let the user inspect results
+    - Architectural change: let the user decide which folders to include in the analysis, instead of using all subfolders in the selected folder
+    - Make the metadata editor clearly indicate which folder's data we're looking at
+    - Add more filters to exclude bad cells
+    - Maybe let the user choose which fitlers to use
     """)
     return
 
