@@ -127,7 +127,7 @@ def _(mo):
 def _(
     add_btn,
     get_rows,
-    metadata: "Metadata",
+    metadata,
     mo,
     remove_btn,
     save_metadata_btn,
@@ -151,25 +151,7 @@ def _(
 
 
 @app.cell
-def _():
-    import marimo as mo
-    import yaml
-    from interface.gui_constants import CONFIG_TEMPLATE, METADATA_TEMPLATE
-    from analysis.toml_data import Config, Metadata, Treatments
-    from pathlib import Path
-
-    return Config, METADATA_TEMPLATE, Metadata, Path, Treatments, mo, yaml
-
-
-@app.cell
-def _(
-    Metadata,
-    config: "Config",
-    get_metadata,
-    mo,
-    save_config,
-    update_frame_number,
-):
+def _(config: "Config", metadata, mo, save_config, update_frame_number):
     # UI element definitions
 
     # BUTTONS
@@ -199,9 +181,6 @@ def _(
     report_name = mo.ui.text(label="Report filename:", value=config.output.report_name)
     summary_name = mo.ui.text(label="Summary filename:", value=config.output.summary_name)
 
-    # METADATA
-    metadata: Metadata = get_metadata()
-
     ratiometric = mo.ui.switch(value=metadata.conditions.ratiometric_dye)
     framerate = mo.ui.number(label="Framerate", start=1, stop=1000, value=metadata.conditions.framerate)
     frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=metadata.conditions.frame_number, on_change=update_frame_number)
@@ -217,7 +196,6 @@ def _(
         framerate,
         group_1,
         group_2,
-        metadata,
         method,
         photo_corr,
         ratiometric,
@@ -230,9 +208,14 @@ def _(
 
 
 @app.cell
-def _(mo):
+def _(config: "Config", mo):
     file_browser_label = "Click on a name to enter that folder, click on a folder icon to select it. You can only select one at a time. "
-    metadata_file = mo.ui.file_browser(label=file_browser_label, selection_mode="directory", multiple=False)
+    metadata_file = mo.ui.file_browser(
+        label=file_browser_label,
+        selection_mode="directory",
+        multiple=False,
+        initial_path=config.input.target_folder
+    )
     return (metadata_file,)
 
 
@@ -267,16 +250,18 @@ def _(mo):
     - Maybe let the user choose which fitlers to use
 
     ## The plan for fixing the DAG problems around metadata state:
-    - Break the ui in three: the buttons panel, the file browser, and the file editor
-    - The file browser is defined in one cell, another cell loads the metadata/config, and the editor's cell simply depends on this previous cell.
+    - ~~Break the ui in three: the buttons panel, the file browser, and the file editor~~
+    - ~~The file browser is defined in one cell, another cell loads the metadata/config, and the editor's cell simply depends on this previous cell.~~
     - The editor panel is wrapped in a mo.ui.form to guard against unsaved changes.
     - File saving is implemented by checking the form's .value, which is only updated when the user presses the button.
+    - Do something about the fact that the two file browsers display the same thing yet behave differently.
     """)
     return
 
 
 @app.cell
-def _(Config, METADATA_TEMPLATE, Metadata, mo, yaml):
+def _(Config, yaml):
+    # Config handling, creation
     def load_config() -> Config:
         with open("config.yaml", "r") as f:
             config_dict = yaml.safe_load(f)
@@ -289,10 +274,14 @@ def _(Config, METADATA_TEMPLATE, Metadata, mo, yaml):
             yaml.dump(config.to_dict(), f)
 
     config: Config = load_config()
+    return config, save_config
 
-    get_metadata, set_metadata = mo.state(Metadata(METADATA_TEMPLATE))
-    # this is necessary because we need to update the loaded values whenever a new folder is selected
-    return config, get_metadata, save_config, set_metadata
+
+@app.cell
+def _(METADATA_TEMPLATE, Metadata, load_metadata, metadata_file):
+    # Metadata loader cell
+    metadata = load_metadata(metadata_file.value[0].path) if metadata_file.value else Metadata(METADATA_TEMPLATE)
+    return (metadata,)
 
 
 @app.cell
@@ -303,35 +292,29 @@ def _(
     Treatments,
     get_metadata,
     get_rows,
-    set_metadata,
     set_rows,
     yaml,
 ):
-    def load_metadata(tuple_of_selected_paths):
-        # mo.ui.file_browser passes a tuple of FileBrowserFileInfo objects to its callback function
-        selected_folder = Path(tuple_of_selected_paths[0].path)
+    def load_metadata(selected_folder: Path) -> Metadata:
         metadata_path = selected_folder / "metadata.yaml"
 
         if metadata_path.exists():
             with open(metadata_path, "r") as f:
                 loaded_metadata = yaml.safe_load(f)
-                set_metadata(Metadata(loaded_metadata))
+                metadata = Metadata(loaded_metadata)
         else:
-            set_metadata(Metadata(METADATA_TEMPLATE))
+            metadata = Metadata(METADATA_TEMPLATE)
 
-        translate_treatments_to_rows()
-
-    def translate_rows_to_treatments():
         rows = get_rows()
-        current_metadata = get_metadata()
         new_treatments_obj = Treatments()
-
+    
         for row in rows:
             begin, end = row["range"] # we are unpacking a 2 item list, so this is fine
             new_treatments_obj[row["name"]] = (begin, end)
 
-        current_metadata.treatments = new_treatments_obj
-        set_metadata(current_metadata)
+        metadata.treatments = new_treatments_obj
+    
+        return metadata
 
     def translate_treatments_to_rows():
         current_metadata = get_metadata()
@@ -341,7 +324,7 @@ def _(
             # treatment.values returns a tuple of the begin and end value, and I'm unpacking those into the range list
         set_rows(rows)
 
-    return (translate_rows_to_treatments,)
+    return (load_metadata,)
 
 
 @app.cell
@@ -358,6 +341,17 @@ def _(get_metadata, metadata_file, mo, translate_rows_to_treatments, yaml):
 
     save_metadata_btn = mo.ui.button(label="Save metadata", on_click=save_metadata)
     return (save_metadata_btn,)
+
+
+@app.cell
+def _():
+    import marimo as mo
+    import yaml
+    from interface.gui_constants import CONFIG_TEMPLATE, METADATA_TEMPLATE
+    from analysis.toml_data import Config, Metadata, Treatments
+    from pathlib import Path
+
+    return Config, METADATA_TEMPLATE, Metadata, Path, Treatments, mo, yaml
 
 
 if __name__ == "__main__":
