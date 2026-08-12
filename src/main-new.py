@@ -5,8 +5,96 @@ app = marimo.App(width="medium")
 
 
 @app.cell
-def _(tabs):
-    tabs
+def _(analysis, clear_cache, convert_from_cache, convert_to_cache, mo):
+    actions_explanation = """
+    To inspect or change global config settings that apply to all measurements, go to the Config tab. You can save these settings to a file, from which they will be re-loaded next time. Individual measurement parameters are read from files as well, each measurement's folder is supposed to contain a metadata.toml file. You can use the Metadata tab to create, edit, and save these. If no metadata file exists in the selected folder, the default settings are loaded from a template, but file saving is **not** automatic. You need to save each metadata file manually.
+
+    To speed up analysis work, a caching mechanism is used. The point is that reading and writing Excel files is slow, but if we save our data in a better file format, we will be able to perform repeated analyses with different settings without having to read the Excel data again, and this benefit will persist after the app is closed. (As opposed to just keeping the data in memory.) Each measurement's Excel file is read, and the data is saved in a different format which is significantly faster to read, but cannot be used for other work. If you want to inspect the results or load the data into a different program, you will need to convert back to Excel.
+    """
+
+    top_section_1 = mo.vstack([
+        mo.md(text="#Instructions"),
+        mo.md(text=actions_explanation),
+    ], align="center")
+
+    top_section_2 = mo.vstack([
+        mo.hstack([analysis, convert_to_cache], justify="start"),
+        mo.hstack([clear_cache, convert_from_cache], justify="start")
+    ])
+
+    mo.vstack([top_section_1, top_section_2], gap=2.5)
+    return
+
+
+@app.cell
+def _(
+    SD_mult,
+    method,
+    mo,
+    photo_corr,
+    report_name,
+    save_config_btn,
+    smoothing_range,
+    summary_name,
+    target_folder,
+):
+    config_section_header = """
+    #Global configuration"""
+
+    config_section_1 = mo.vstack([
+        mo.md(text=config_section_header),
+    ], align="center")
+
+    config_section_2 = mo.vstack([
+        mo.md(text="##Input"),
+        target_folder,
+        method,
+        SD_mult,
+        smoothing_range,
+        mo.hstack([mo.md(text="Photobleaching correction:"), photo_corr], justify="start"),
+        mo.md(text="##Output"),
+        report_name,
+        summary_name
+    ])
+    mo.vstack([config_section_1, config_section_2, save_config_btn])
+    return
+
+
+@app.cell
+def _(metadata_file, mo):
+    metadata_header = mo.vstack([
+        mo.md(text="#Experiment details")
+    ], align="center")
+
+    metadata_section_1 = mo.vstack([
+        mo.md(text="##Measurement folder:"),
+        metadata_file,
+    ])
+    mo.vstack([metadata_header, metadata_section_1])
+    return
+
+
+@app.cell
+def _(
+    frame_number,
+    framerate,
+    group_1,
+    group_2,
+    mo,
+    ratiometric,
+    treatment_stack,
+):
+    metadata_section_2 = mo.vstack([
+        mo.md(text="##Conditions"),
+        mo.hstack([mo.md(text="Ratiometric dye:"), ratiometric], justify="start"),
+        framerate,
+        frame_number,
+        group_1,
+        group_2,
+        mo.md(text="##Treatments"),
+        treatment_stack
+    ])
+    metadata_section_2
     return
 
 
@@ -75,70 +163,6 @@ def _():
 
 @app.cell
 def _(
-    SD_mult,
-    actions_explanation,
-    analysis,
-    clear_cache,
-    convert_from_cache,
-    convert_to_cache,
-    frame_number,
-    framerate,
-    group_1,
-    group_2,
-    metadata_file,
-    method,
-    mo,
-    photo_corr,
-    ratiometric,
-    report_name,
-    save_config_btn,
-    smoothing_range,
-    summary_name,
-    target_folder,
-    treatment_stack,
-):
-    # Actions tab
-    tab0 = mo.vstack([
-        mo.md(text="##Instructions"),
-        mo.md(text=actions_explanation),
-        mo.hstack([analysis, convert_to_cache], justify="start"),
-        mo.hstack([clear_cache, convert_from_cache], justify="start")
-    ])
-
-    # Config tab
-    tab1 = mo.vstack([
-        save_config_btn,
-        mo.md(text="##Input"),
-        target_folder,
-        method,
-        SD_mult,
-        smoothing_range,
-        mo.hstack([mo.md(text="Photobleaching correction:"), photo_corr], justify="start"),
-        mo.md(text="##Output"),
-        report_name,
-        summary_name
-    ])
-
-    # Metadata tab
-    tab2 = mo.vstack([
-        mo.md(text="##Measurement folder:"),
-        metadata_file,
-        mo.md(text="##Conditions"),
-        mo.hstack([mo.md(text="Ratiometric dye:"), ratiometric], justify="start"),
-        framerate,
-        frame_number,
-        group_1,
-        group_2,
-        mo.md(text="##Treatments"),
-        treatment_stack
-    ])
-
-    tabs = mo.ui.tabs({"Actions": tab0, "Config": tab1, "Metadata": tab2})
-    return (tabs,)
-
-
-@app.cell
-def _(
     Metadata,
     config: "Config",
     get_metadata,
@@ -147,11 +171,6 @@ def _(
     update_frame_number,
 ):
     # UI element definitions
-    actions_explanation = """
-    To inspect or change global config settings that apply to all measurements, go to the Config tab. You can save these settings to a file, from which they will be re-loaded next time. Individual measurement parameters are read from files as well, each measurement's folder is supposed to contain a metadata.toml file. You can use the Metadata tab to create, edit, and save these. If no metadata file exists in the selected folder, the default settings are loaded from a template, but file saving is **not** automatic. You need to save each metadata file manually.
-
-    To speed up analysis work, a caching mechanism is used. The point is that reading and writing Excel files is slow, but if we save our data in a better file format, we will be able to perform repeated analyses with different settings without having to read the Excel data again, and this benefit will persist after the app is closed. (As opposed to just keeping the data in memory.) Each measurement's Excel file is read, and the data is saved in a different format which is significantly faster to read, but cannot be used for other work. If you want to inspect the results or load the data into a different program, you will need to convert back to Excel.
-    """
 
     # BUTTONS
     analysis = mo.ui.button(label="Analyze", full_width=True, tooltip="Perform data analysis with the current settings.")
@@ -159,7 +178,7 @@ def _(
     convert_from_cache = mo.ui.button(label="Convert to Excel", full_width=True, tooltip="Convert data back to Excel files. Overwrites originals.")
     clear_cache = mo.ui.button(label="Clear cache", full_width=True, tooltip="Delete all cached files. Excel data remains untouched.")
 
-    save_config_btn = mo.ui.button(label="Save settings", on_click=save_config)
+    save_config_btn = mo.ui.button(label="Save settings", on_click=save_config, full_width=True)
 
     # CONFIG
     target_folder = mo.ui.file_browser(label="Data folder:",
@@ -190,7 +209,6 @@ def _(
     group_2 = mo.ui.text(label="Group 2:", value=metadata.conditions.group2)
     return (
         SD_mult,
-        actions_explanation,
         analysis,
         clear_cache,
         convert_from_cache,
@@ -212,9 +230,9 @@ def _(
 
 
 @app.cell
-def _(load_metadata, mo):
+def _(mo):
     file_browser_label = "Click on a name to enter that folder, click on a folder icon to select it. You can only select one at a time. "
-    metadata_file = mo.ui.file_browser(label=file_browser_label, selection_mode="directory", multiple=False, on_change=load_metadata)
+    metadata_file = mo.ui.file_browser(label=file_browser_label, selection_mode="directory", multiple=False)
     return (metadata_file,)
 
 
@@ -323,7 +341,7 @@ def _(
             # treatment.values returns a tuple of the begin and end value, and I'm unpacking those into the range list
         set_rows(rows)
 
-    return load_metadata, translate_rows_to_treatments
+    return (translate_rows_to_treatments,)
 
 
 @app.cell
