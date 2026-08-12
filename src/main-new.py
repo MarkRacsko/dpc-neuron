@@ -247,6 +247,12 @@ def _(mo):
     - Make the metadata editor clearly indicate which folder's data we're looking at
     - Add more filters to exclude bad cells
     - Maybe let the user choose which fitlers to use
+
+    ## The plan for fixing the DAG problems around metadata state:
+    - Break the ui in three: the buttons panel, the file browser, and the file editor
+    - The file browser is defined in one cell, another cell loads the metadata/config, and the editor's cell simply depends on this previous cell.
+    - The editor panel is wrapped in a mo.ui.form to guard against unsaved changes.
+    - File saving is implemented by checking the form's .value, which is only updated when the user presses the button.
     """)
     return
 
