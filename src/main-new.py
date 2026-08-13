@@ -127,11 +127,11 @@ def _(get_rows, mo, set_rows, ui_container):
 
 
 @app.cell
-def _(get_rows, metadata, mo):
+def _(frame_number, get_rows, mo):
     ui_container = mo.ui.array([
         mo.ui.dictionary({
             "name": mo.ui.text(value=row["name"]),
-            "range": mo.ui.range_slider(0, metadata.conditions.frame_number, value=row["range"], full_width=True)
+            "range": mo.ui.range_slider(0, frame_number.value, value=row["range"], full_width=True)
         })
         for row in get_rows()
     ])
@@ -150,7 +150,7 @@ def _(add_btn, mo, remove_btn, rows_layout, save_metadata_btn):
 
 
 @app.cell
-def _(config: "Config", metadata, mo, save_config, update_frame_number):
+def _(config: "Config", metadata, mo, save_config):
     # UI element definitions
 
     # BUTTONS
@@ -182,7 +182,7 @@ def _(config: "Config", metadata, mo, save_config, update_frame_number):
 
     ratiometric = mo.ui.switch(value=metadata.conditions.ratiometric_dye)
     framerate = mo.ui.number(label="Framerate", start=1, stop=1000, value=metadata.conditions.framerate)
-    frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=metadata.conditions.frame_number, on_change=update_frame_number)
+    frame_number = mo.ui.number(label="Number of frames", start=1, stop=1000000, step=1, value=metadata.conditions.frame_number)
     group_1 = mo.ui.text(label="Group 1:", value=metadata.conditions.group1)
     group_2 = mo.ui.text(label="Group 2:", value=metadata.conditions.group2)
     return (
@@ -216,16 +216,6 @@ def _(config: "Config", mo):
         initial_path=config.input.target_folder
     )
     return (metadata_file,)
-
-
-@app.cell
-def _(get_metadata, set_metadata):
-    def update_frame_number(n):
-        current_metadata = get_metadata()
-        current_metadata.conditions.frame_number = n
-        set_metadata(current_metadata)
-
-    return (update_frame_number,)
 
 
 @app.cell(hide_code=True)
@@ -275,16 +265,7 @@ def _(METADATA_TEMPLATE, Metadata, load_metadata, metadata_file):
 
 
 @app.cell
-def _(
-    METADATA_TEMPLATE,
-    Metadata,
-    Path,
-    Treatments,
-    get_metadata,
-    get_rows,
-    set_rows,
-    yaml,
-):
+def _(METADATA_TEMPLATE, Metadata, Path, Treatments, get_rows, yaml):
     def load_metadata(selected_folder: Path) -> Metadata:
         metadata_path = selected_folder / "metadata.yaml"
 
@@ -305,14 +286,6 @@ def _(
         metadata.treatments = new_treatments_obj
 
         return metadata
-
-    def translate_treatments_to_rows():
-        current_metadata = get_metadata()
-        rows = []
-        for name, treatment in current_metadata.treatments.items():
-            rows.append({"name": name, "range": [*treatment.values]})
-            # treatment.values returns a tuple of the begin and end value, and I'm unpacking those into the range list
-        set_rows(rows)
 
     return (load_metadata,)
 
