@@ -12,17 +12,23 @@ def _(analysis, clear_cache, convert_from_cache, convert_to_cache, mo):
     To speed up analysis work, a caching mechanism is used. The point is that reading and writing Excel files is slow, but if we save our data in a better file format, we will be able to perform repeated analyses with different settings without having to read the Excel data again, and this benefit will persist after the app is closed. (As opposed to just keeping the data in memory.) Each measurement's Excel file is read, and the data is saved in a different format which is significantly faster to read, but cannot be used for other work. If you want to inspect the results or load the data into a different program, you will need to convert back to Excel.
     """
 
+    process_check = mo.ui.checkbox(label="Process")
+    graph_check = mo.ui.checkbox(label="Make graphs")
+    sum_check = mo.ui.checkbox(label="Summarize")
+    repeat_check = mo.ui.checkbox(label="Repeat")
+
     top_section_1 = mo.vstack([
         mo.md(text="#Instructions"),
         mo.md(text=actions_explanation),
     ], align="center")
 
     top_section_2 = mo.vstack([
+        mo.hstack([process_check, graph_check, sum_check, repeat_check], justify="center"),
         mo.hstack([analysis, convert_to_cache], justify="start"),
-        mo.hstack([clear_cache, convert_from_cache], justify="start")
+        mo.hstack([clear_cache, convert_from_cache], justify="start"),
     ])
 
-    mo.vstack([top_section_1, top_section_2], gap=2.5)
+    mo.vstack([top_section_1, top_section_2], gap=1.5)
     return
 
 
@@ -235,6 +241,7 @@ def _(mo):
     - Make the metadata editor clearly indicate which folder's data we're looking at
     - Add more filters to exclude bad cells
     - Maybe let the user choose which fitlers to use
+    - Maybe add a button to hide/show the config panel
     """)
     return
 
@@ -303,7 +310,7 @@ def _(Treatments, deepcopy, metadata, metadata_file, mo, ui_container, yaml):
             new_treatments_obj[row["name"]] = (begin, end)
 
         current_metadata.treatments = new_treatments_obj
-    
+
         metadata_dict = current_metadata.to_dict()
 
         with open(metadata_path, "w") as f:
