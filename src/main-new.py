@@ -234,12 +234,10 @@ def _(mo):
     # TODO
 
     ## Port existing functionality to marimo:
-    - Disentangle the DAG so the metadata file browser is not constantly re-rendered and re-run
-    - ~~Implement saving the file.~~ make it work
-    - ~~Figure out how to make the metadata file selector's initial path be the folder selected by target_folder~~
     - ~~Build the main panel with the 4 buttons~~, hook them up to the data processing backend
     - Add a progress bar to provide feedback on data analysis and file conversions.
     - Reconsider the program's architecture and general behavior. It may be better for repeated analysis with different settings to keep all input data in memory, instead of re-reading cached files. I don't remember exactly why I chose this design, and it may well be the correct one, but I will need to think about this more.
+    - Do something about the fact that the two file browsers display the same thing yet behave differently.
 
     ## New functionality to implement:
     - Use mo.ui.dataframe and/or mo.ui.data_explorer widget(s) to let the user inspect results
@@ -247,13 +245,6 @@ def _(mo):
     - Make the metadata editor clearly indicate which folder's data we're looking at
     - Add more filters to exclude bad cells
     - Maybe let the user choose which fitlers to use
-
-    ## The plan for fixing the DAG problems around metadata state:
-    - ~~Break the ui in three: the buttons panel, the file browser, and the file editor~~
-    - ~~The file browser is defined in one cell, another cell loads the metadata/config, and the editor's cell simply depends on this previous cell.~~
-    - The editor panel is wrapped in a mo.ui.form to guard against unsaved changes.
-    - File saving is implemented by checking the form's .value, which is only updated when the user presses the button.
-    - Do something about the fact that the two file browsers display the same thing yet behave differently.
     """)
     return
 
@@ -327,12 +318,19 @@ def _(
 
 
 @app.cell
-def _(get_metadata, metadata_file, mo, translate_rows_to_treatments, yaml):
+def _(Treatments, deepcopy, metadata, metadata_file, mo, ui_container, yaml):
     def save_metadata(_):
         metadata_path = metadata_file.value[0].path / "metadata.yaml"
-        translate_rows_to_treatments()
 
-        current_metadata = get_metadata()
+        current_metadata = deepcopy(metadata)
+        new_treatments_obj = Treatments()
+
+        for row in ui_container.value:
+            begin, end = row["range"] # we are unpacking a 2 item list, so this is fine
+            new_treatments_obj[row["name"]] = (begin, end)
+
+        current_metadata.treatments = new_treatments_obj
+    
         metadata_dict = current_metadata.to_dict()
 
         with open(metadata_path, "w") as f:
@@ -349,8 +347,18 @@ def _():
     from interface.gui_constants import CONFIG_TEMPLATE, METADATA_TEMPLATE
     from analysis.toml_data import Config, Metadata, Treatments
     from pathlib import Path
+    from copy import deepcopy
 
-    return Config, METADATA_TEMPLATE, Metadata, Path, Treatments, mo, yaml
+    return (
+        Config,
+        METADATA_TEMPLATE,
+        Metadata,
+        Path,
+        Treatments,
+        deepcopy,
+        mo,
+        yaml,
+    )
 
 
 if __name__ == "__main__":
