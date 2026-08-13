@@ -32,6 +32,36 @@ def _(analysis, clear_cache, convert_from_cache, convert_to_cache, mo):
     return
 
 
+@app.cell(disabled=True)
+def _(AnalysisEngine, Converter):
+     # these wont work just yet
+    analysis_engine = AnalysisEngine()
+    converter = Converter()
+    return
+
+
+@app.cell
+def _(analysis, clear_cache, convert_from_cache, convert_to_cache):
+    # FUNCTIONALITY
+    # Analysis
+    if analysis.value:
+        pass
+
+    # Conversion to cache
+    if convert_to_cache.value:
+        pass
+
+    # Clear the cache
+    if clear_cache.value:
+        pass
+
+    # Conversion from cache to Excel
+    if convert_from_cache.value:
+        pass
+
+    return
+
+
 @app.cell
 def _(
     SD_mult,
@@ -160,10 +190,10 @@ def _(config: "Config", metadata, mo, save_config):
     # UI element definitions
 
     # BUTTONS
-    analysis = mo.ui.button(label="Analyze", full_width=True, tooltip="Perform data analysis with the current settings.")
-    convert_to_cache = mo.ui.button(label="Convert to cache", full_width=True, tooltip="Convert Excel data to the cached format.")
-    convert_from_cache = mo.ui.button(label="Convert to Excel", full_width=True, tooltip="Convert data back to Excel files. Overwrites originals.")
-    clear_cache = mo.ui.button(label="Clear cache", full_width=True, tooltip="Delete all cached files. Excel data remains untouched.")
+    analysis = mo.ui.run_button(label="Analyze", full_width=True, tooltip="Perform data analysis with the current settings.")
+    convert_to_cache = mo.ui.run_button(label="Convert to cache", full_width=True, tooltip="Convert Excel data to the cached format.")
+    convert_from_cache = mo.ui.run_button(label="Convert to Excel", full_width=True, tooltip="Convert data back to Excel files. Overwrites originals.")
+    clear_cache = mo.ui.run_button(label="Clear cache", full_width=True, tooltip="Delete all cached files. Excel data remains untouched.")
 
     save_config_btn = mo.ui.button(label="Save settings", on_click=save_config, full_width=True)
 
@@ -324,13 +354,17 @@ def _(Treatments, deepcopy, metadata, metadata_file, mo, ui_container, yaml):
 def _():
     import marimo as mo
     import yaml
-    from interface.gui_constants import CONFIG_TEMPLATE, METADATA_TEMPLATE
+    from interface.templates import CONFIG_TEMPLATE, METADATA_TEMPLATE
     from analysis.toml_data import Config, Metadata, Treatments
     from pathlib import Path
     from copy import deepcopy
+    from analysis.engine import AnalysisEngine
+    from analysis.converter import Converter
 
     return (
+        AnalysisEngine,
         Config,
+        Converter,
         METADATA_TEMPLATE,
         Metadata,
         Path,

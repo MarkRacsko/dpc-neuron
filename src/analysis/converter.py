@@ -1,7 +1,6 @@
 from pathlib import Path
 from shutil import rmtree
 from threading import Lock, Thread
-from tkinter import IntVar
 
 import pandas as pd
 import python_calamine as cala
@@ -18,7 +17,7 @@ class Converter:
         self.report_name = report_name
         self.lock = Lock()
 
-    def convert_to_pickle(self, finished_files: IntVar):
+    def convert_to_pickle(self):
         """Reads in all Excel files found in this measurement folders and converts each of their sheets into a separate
         pickled file. Uses calamine because it is a bit faster than openpyxl.
 
@@ -36,8 +35,6 @@ class Converter:
 
                     df.to_pickle(cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.pkl")
 
-                with self.lock:
-                    finished_files.set(finished_files.get() + 1)
         
         threads = []
         for folder in self.target_folder.iterdir():
@@ -55,10 +52,8 @@ class Converter:
             for thread in threads:
                 thread.join()
 
-        with self.lock:
-            finished_files.set(0)
 
-    def convert_to_excel(self, finished_files: IntVar):
+    def convert_to_excel(self):
         """Converts the cached pickle files back into Excel, overwriting the original files.
 
         Args:
@@ -88,9 +83,6 @@ class Converter:
                     for sheet, df in contents:
                         df.to_excel(writer, sheet_name=sheet, index=False)
                 
-                with self.lock:
-                    finished_files.set(finished_files.get() + 1)
-
 
         threads = []
         for folder in self.target_folder.iterdir():
@@ -105,8 +97,6 @@ class Converter:
         for thread in threads:
             thread.join()
 
-        with self.lock:
-            finished_files.set(0)
 
     def purge_cache(self):
         for folder in self.target_folder.iterdir():

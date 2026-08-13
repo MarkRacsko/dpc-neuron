@@ -1,19 +1,23 @@
 from pathlib import Path
 from threading import Lock
-from tkinter import IntVar
-from typing import Optional
 
 import numpy as np
-from matplotlib.figure import Figure
 import pandas as pd
 import toml
-
-from analysis.compiled.cy_smooth import smooth # type: ignore it actually works
+from matplotlib.figure import Figure
+from scipy.ndimage import uniform_filter1d
 
 from .converter import NAME_SHEET_SEP
-from .toml_data import Metadata, Conditions, Config
-from .processing_functions import normalize, baseline_threshold, previous_threshold, derivate_threshold, neuron_filter
+from .processing_functions import (
+    baseline_threshold,
+    derivate_threshold,
+    neuron_filter,
+    normalize,
+    previous_threshold,
+)
+from .toml_data import Conditions, Config, Metadata
 from .validation import validate_metadata
+
 
 class DataProcessor:
     _error_lock = Lock()
@@ -26,7 +30,7 @@ class DataProcessor:
         self.report_path = path / f"{self.config.output.report_name}{path.name}.xlsx"
         self.treatment_col_names: list[str] = []
         self.treatment_windows: dict[str, slice[int]] = {}
-        self.report: Optional[pd.DataFrame] = None
+        self.report: pd.DataFrame | None = None
         self.need_to_work: bool = True
         self.conditions: Conditions
         self.measurement_files = [f for f in self.path.glob("*.xlsx") if f != self.report_path]
@@ -61,7 +65,7 @@ class DataProcessor:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, finished_files: IntVar, error_list: list[str]) -> None:
+    def make_report(self, error_list: list[str]) -> None:
         """Encapsulates all data processing work needed to produce a report.
 
         Args:
@@ -85,7 +89,7 @@ class DataProcessor:
         for file in self.measurement_files:
             file_result = pd.DataFrame(columns=output_columns)
             try:
-                if self.conditions.ratiometric_dye.lower() == "true":
+                if self.conditions.ratiometric_dye:
                     cell_cols, data = self.prepare_ratiometric_data(file, options.smoothing_range, options.correction)
                 else:
                     cell_cols, data = self.prepare_non_ratiometric_data(file, options.smoothing_range, options.correction)
@@ -127,7 +131,6 @@ class DataProcessor:
             file_result["cell_type"] = cell_cols
 
             results.append(file_result)
-            self.update_file_count(finished_files)
 
         self.report = pd.concat(results)
 
@@ -137,18 +140,18 @@ class DataProcessor:
         if bad_groups_files:
             message += "The following files are named incorrectly:"
             for f in bad_groups_files:
-                message += f"\n{str(f)}"
+                message += f"\n{f}"
             message += "\nPlease consult the appropriate metadata file and rename them."
         if bad_sheet_files:
             message += "\n\nThe following files have incorrectly named sheets:"
             for f in bad_sheet_files:
-                message += f"\n{str(f)}"
+                message += f"\n{f}"
             message += "\nPlease consult the README and rename the sheet(s) appropriately."
         if message:
             with self._error_lock:
                 error_list.append(message)
 
-    def make_graphs(self, finished_files: IntVar):
+    def make_graphs(self):
         if self.report is None:
             self.report = pd.read_excel(self.report_path, sheet_name="Cells")
         
@@ -156,16 +159,16 @@ class DataProcessor:
             graphing_path: Path = self.path / Path(file.stem)
             if not graphing_path.exists():
                 Path.mkdir(graphing_path)
-            sheet_name = "Py_ratios" if self.conditions.ratiometric_dye.lower() == "true" else "Processed"
+            sheet_name = "Py_ratios" if self.conditions.ratiometric_dye else "Processed"
             ratios = pd.read_excel(file, sheet_name=sheet_name)
             cell_cols = [c for c in ratios.columns if c != "Time"]
             ratios = np.transpose(ratios.to_numpy())
             x_data, ratios = ratios[0], ratios[1:]
             reaction_cols = [col for col in self.report.columns if "_reaction" in col]
 
-            self.graph_data(x_data.flatten(), ratios, cell_cols, self.report[reaction_cols], graphing_path, finished_files)
+            self.graph_data(x_data.flatten(), ratios, cell_cols, self.report[reaction_cols], graphing_path)
     
-    def graph_data(self, x_data: np.ndarray, traces: np.ndarray, col_names: list[str], reactions: pd.DataFrame, save_dir: Path, finished_files: IntVar) -> None:
+    def graph_data(self, x_data: np.ndarray, traces: np.ndarray, col_names: list[str], reactions: pd.DataFrame, save_dir: Path) -> None:
         """Creates line graphs for each cell in this particular measurement file. Is called from within make_report()
         because it needs the cell trace data and that funtion only returns the report DataFrame.
 
@@ -213,23 +216,22 @@ class DataProcessor:
             fig.tight_layout()
             fig.savefig(save_dir / f"Cell no. {i}.png", dpi=300)
             fig.clf()
-            self.update_file_count(finished_files)
 
-    def load_summary_from_report(self, finished_files: IntVar) -> None:
+    def load_summary_from_report(self) -> None:
             self.report = pd.read_excel(self.report_path, sheet_name="Summary", engine="calamine")
-            self.update_file_count(finished_files)
 
-    def prepare_ratiometric_data(self, file: Path, smoothing_window: int, corr: str) -> tuple[list[str], np.ndarray]:
+    def prepare_ratiometric_data(self, file: Path, smoothing_window: int, corr: bool) -> tuple[list[str], np.ndarray]:
         """Reads data from Fura2 measurements, then performs background substraction, smoothing, and photobleaching
         correction. Saves processed data to a pickle file as well as returning it.
 
         Args:
-            file (Path): The measurement file's path.
-            smoothing_window (int): The average of this many elements will be taken for the smoothing. Defaults to 5,
+              file (Path): The measurement file's path.
+              smoothing_window (int): The average of this many elements will be taken for the smoothing. Defaults to 5,
             and it should be an odd number.
+              corr (bool): Determines if we're doing photobleaching correction.
 
         Returns:
-            tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
+              tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
             transformed data, transposed (compared to how it was in the input file).
         """
         # read in 340 and 380 data separately
@@ -249,11 +251,11 @@ class DataProcessor:
         cells_380 = cells_380 - bgr_380
         
         # smoothing should probably go here
-        cells_340 = np.apply_along_axis(smooth, 0, cells_340, window_size = smoothing_window)
-        cells_380 = np.apply_along_axis(smooth, 0, cells_380, window_size = smoothing_window)
+        cells_340 = uniform_filter1d(cells_340, size=smoothing_window, axis=1, mode='nearest')
+        cells_380 = uniform_filter1d(cells_380, size=smoothing_window, axis=1, mode='nearest')
 
         # photobleaching correction
-        if corr.lower() == "true": # I know this looks stupid, see the docstring of the make_report method
+        if corr:
             matrix = np.hstack((np.ones_like(x_data), x_data))
             coeffs_340, _, _, _ = np.linalg.lstsq(matrix, cells_340, rcond=None)
             coeffs_380, _, _, _ = np.linalg.lstsq(matrix, cells_380, rcond=None)
@@ -270,17 +272,18 @@ class DataProcessor:
 
         return cell_cols, ratios
     
-    def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int, corr: str) -> tuple[list[str], np.ndarray]:
+    def prepare_non_ratiometric_data(self, file:Path, smoothing_window: int, corr: bool) -> tuple[list[str], np.ndarray]:
         """Reads data from measurements non-ratiometric dyes such as Fluo4, then performs background substraction,
         smoothing, and photobleaching correction. Saves processed data to a pickle file as well as returning it.
 
         Args:
-            file (Path): The measurement file's path.
-            smoothing_window (int): The average of this many elements will be taken for the smoothing. Defaults to 5,
+              file (Path): The measurement file's path.
+              smoothing_window (int): The average of this many elements will be taken for the smoothing. Defaults to 5,
             and it should be an odd number.
+              corr (bool): Determines if we're doing photobleaching correction.
 
         Returns:
-            tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
+              tuple[list[str], np.ndarray]: The list contains the cell column names, while the numpy array contains the
             transformed data, transposed (compared to how it was in the input file).
         """
         data = pd.read_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}Raw.pkl")
@@ -290,10 +293,10 @@ class DataProcessor:
         
         # normalization and smoothing
         cells = np.apply_along_axis(normalize, 0, cells, baseline=self.treatment_windows["baseline"].stop)
-        cells = np.apply_along_axis(smooth, 0, cells, window_size = smoothing_window)
+        cells = uniform_filter1d(cells, size=smoothing_window, axis=1, mode='nearest')
         
         # photobleaching correction
-        if corr.lower() == "true": # I know this looks stupid, see the docstring of the make_report method
+        if corr: # I know this looks stupid, see the docstring of the make_report method
             matrix = np.hstack((np.ones_like(x_data), x_data))
             coeffs, _, _, _ = np.linalg.lstsq(matrix, cells, rcond=None)
             coeffs = coeffs[1] # we don't care about the y intercept
@@ -305,14 +308,14 @@ class DataProcessor:
         self.save_processed_data(file, x_data, cells, cell_cols, corr_arg)
         return cell_cols, cells.transpose()
 
-    def update_file_count(self, count: IntVar):
-        """Provides feedback to the user when a file is finished processing.
+    # def update_file_count(self, count: IntVar):
+    #     """Provides feedback to the user when a file is finished processing.
 
-        Args:
-            count (tk.IntVar): The progress tracker shared between all processor instances.
-        """
-        with self._file_count_lock:
-            count.set(count.get() + 1)
+    #     Args:
+    #         count (tk.IntVar): The progress tracker shared between all processor instances.
+    #     """
+    #     with self._file_count_lock:
+    #         count.set(count.get() + 1)
 
     def save_processed_data(self, file: Path, x_data: np.ndarray, cell_data: np.ndarray, col_names: list[str], coeffs: np.ndarray | None) -> None:
         """Saves processed Ca traces and photobleaching correction coefficients to pickle files in the cache.
@@ -329,8 +332,8 @@ class DataProcessor:
         col_names = ["Time"] + col_names
         data = np.vstack((x_data.flatten(), cell_data))
         data = np.transpose(data)
-        ratio: bool = self.conditions.ratiometric_dye.lower() == "true"
-        if ratio:
+
+        if self.conditions.ratiometric_dye:
             sheet_name: str = "Py_ratios"
         else:
             sheet_name: str = "Processed"
@@ -339,7 +342,7 @@ class DataProcessor:
         df.to_pickle(self.cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet_name}.pkl")
         
         if coeffs is not None:
-            if ratio:
+            if self.conditions.ratiometric_dye:
                 col_names[0] = "Wavelength"
                 first_col = np.array([340, 380])
                 first_col = first_col[:, np.newaxis]

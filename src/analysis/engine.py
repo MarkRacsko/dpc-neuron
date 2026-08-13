@@ -1,6 +1,5 @@
 from pathlib import Path
 from threading import Thread
-from tkinter import IntVar
 
 import pandas as pd
 
@@ -23,11 +22,10 @@ class AnalysisEngine:
         repeat (bool): The --repeat command line flag as a bool. Tells the subdirectory level processors to skip already
         processed directories.
     """
-    def __init__(self, config: Config, finished_files: IntVar, repeat: bool) -> None:
+    def __init__(self, config: Config, repeat: bool) -> None:
         self.config = config
         self._processors: list[DataProcessor] = []
         self.repeat = repeat
-        self.finished_files = finished_files
         self.experiments: dict[ExperimentalCondition, list[ExperimentalData]]
 
     def create_processor_instances(self) -> list[str]:
@@ -50,12 +48,12 @@ class AnalysisEngine:
     
     def create_caches(self) -> None:
         converter = Converter(self.config.input.target_folder, self.config.output.report_name)
-        converter.convert_to_pickle(self.finished_files)
+        converter.convert_to_pickle()
 
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
-        arg_tuple = (self.finished_files, errors)
+        arg_tuple = (errors,)
         threads = []
         
         for processor in self._processors:
@@ -66,7 +64,6 @@ class AnalysisEngine:
         for thread in threads:
             thread.join()
         
-        self.finished_files.set(0)
 
     def summarize_results(self):
         """Creates a summary file from all available measurement reports.
@@ -75,7 +72,7 @@ class AnalysisEngine:
         summary_file_name: Path = self.config.input.target_folder / f"{name}.xlsx"
         threads = []
         for processor in self._processors:
-            thread = Thread(target=processor.load_summary_from_report, args=(self.finished_files,))
+            thread = Thread(target=processor.load_summary_from_report)
             threads.append(thread)
             thread.start()
 
@@ -86,7 +83,7 @@ class AnalysisEngine:
             assert isinstance(processor.report, pd.DataFrame) # will never fail, but Pylance can't see why
             condition: ExperimentalCondition = list(processor.treatment_col_names)
             results: ExperimentalData = (processor.path.name, processor.report[["cell_type"] + processor.treatment_col_names].value_counts())
-            if condition not in self.experiments.keys():
+            if condition not in self.experiments:
                 self.experiments[condition] = [results]
             else:
                 self.experiments[condition].append(results)
@@ -104,8 +101,6 @@ class AnalysisEngine:
                 
                 summary.to_excel(writer, sheet_name=sheet_name)
 
-        self.finished_files.set(0)
-
 
     def graph_data(self):
         """Makes graphs from every measurement in every subdirectory. The graphs will be saved in new folders, each
@@ -113,11 +108,9 @@ class AnalysisEngine:
         """
         threads = []
         for processor in self._processors:
-            thread = Thread(target=processor.make_graphs, args=(self.finished_files,))
+            thread = Thread(target=processor.make_graphs)
             threads.append(thread)
             thread.start()
 
         for thread in threads:
             thread.join()
-
-        self.finished_files.set(0)
