@@ -29,36 +29,52 @@ def _(analysis, clear_cache, convert_from_cache, convert_to_cache, mo):
     ])
 
     mo.vstack([top_section_1, top_section_2], gap=1.5)
-    return
-
-
-@app.cell(disabled=True)
-def _(AnalysisEngine, Converter):
-     # these wont work just yet
-    analysis_engine = AnalysisEngine()
-    converter = Converter()
-    return
+    return graph_check, process_check, sum_check
 
 
 @app.cell
-def _(analysis, clear_cache, convert_from_cache, convert_to_cache):
+def _(AnalysisEngine, Converter, config: "Config"):
+    # these wont work just yet
+    analysis_engine = AnalysisEngine(config, True) # the True is for repeat, I think this object needs a bit of a redesign
+    analysis_engine.create_caches()
+    analysis_engine.create_processor_instances()
+    converter = Converter(config.input.target_folder, config.output.report_name)
+    return analysis_engine, converter
+
+
+@app.cell
+def _(
+    analysis,
+    analysis_engine,
+    clear_cache,
+    convert_from_cache,
+    convert_to_cache,
+    converter,
+    graph_check,
+    process_check,
+    sum_check,
+):
     # FUNCTIONALITY
     # Analysis
     if analysis.value:
-        pass
+        if process_check.value:
+            analysis_engine.process_data([]) # the error list
+        if graph_check.value:
+            analysis_engine.graph_data()
+        if sum_check.value:
+            analysis_engine.summarize_results()
 
     # Conversion to cache
     if convert_to_cache.value:
-        pass
+        converter.convert_to_pickle()
 
     # Clear the cache
     if clear_cache.value:
-        pass
+        converter.purge_cache()
 
     # Conversion from cache to Excel
     if convert_from_cache.value:
-        pass
-
+        converter.convert_to_excel()
     return
 
 
@@ -260,7 +276,7 @@ def _(mo):
     # TODO
 
     ## Port existing functionality to marimo:
-    - ~~Build the main panel with the 4 buttons~~, hook them up to the data processing backend
+    - Reevaluate how my classes handle and report errors, port error reporting to marimo
     - Add a progress bar to provide feedback on data analysis and file conversions.
     - Reconsider the program's architecture and general behavior. It may be better for repeated analysis with different settings to keep all input data in memory, instead of re-reading cached files. I don't remember exactly why I chose this design, and it may well be the correct one, but I will need to think about this more.
     - Do something about the fact that the two file browsers display the same thing yet behave differently.
