@@ -108,10 +108,13 @@ def _(mo):
     # name: the string entered into the text box
     # range: the current settings of the range selector -- max value is frame_number.value
     # range is a list not a tuple because that's what range_slider.value returns
+    return get_rows, set_rows
 
+
+@app.cell
+def _(get_rows, mo, set_rows, ui_container):
     def add_row(_):
-        current_rows = get_rows()
-        set_rows(current_rows + [{"name": "New", "range": [0, 50]}])
+        set_rows(ui_container.value + [{"name": "New", "range": [0, 50]}])
 
     def remove_row(_):
         current_rows = get_rows()
@@ -120,32 +123,28 @@ def _(mo):
 
     add_btn = mo.ui.button(label="Add new row", on_click=add_row)
     remove_btn = mo.ui.button(label="Remove last row", on_click=remove_row)
-    return add_btn, get_rows, remove_btn, set_rows
+    return add_btn, remove_btn
 
 
 @app.cell
-def _(
-    add_btn,
-    get_rows,
-    metadata,
-    mo,
-    remove_btn,
-    save_metadata_btn,
-    set_rows,
-):
+def _(get_rows, metadata, mo):
     ui_container = mo.ui.array([
         mo.ui.dictionary({
             "name": mo.ui.text(value=row["name"]),
             "range": mo.ui.range_slider(0, metadata.conditions.frame_number, value=row["range"], full_width=True)
         })
         for row in get_rows()
-    ], on_change=set_rows)
+    ])
 
     rows_layout = mo.vstack([
         mo.hstack([row["name"], row["range"]], justify="start")
         for row in ui_container
     ])
+    return rows_layout, ui_container
 
+
+@app.cell
+def _(add_btn, mo, remove_btn, rows_layout, save_metadata_btn):
     treatment_stack = mo.vstack([rows_layout, mo.hstack([add_btn, remove_btn, save_metadata_btn], justify="start")])
     return (treatment_stack,)
 
@@ -237,7 +236,7 @@ def _(mo):
     ## Port existing functionality to marimo:
     - Disentangle the DAG so the metadata file browser is not constantly re-rendered and re-run
     - ~~Implement saving the file.~~ make it work
-    - Figure out how to make the metadata file selector's initial path be the folder selected by target_folder
+    - ~~Figure out how to make the metadata file selector's initial path be the folder selected by target_folder~~
     - ~~Build the main panel with the 4 buttons~~, hook them up to the data processing backend
     - Add a progress bar to provide feedback on data analysis and file conversions.
     - Reconsider the program's architecture and general behavior. It may be better for repeated analysis with different settings to keep all input data in memory, instead of re-reading cached files. I don't remember exactly why I chose this design, and it may well be the correct one, but I will need to think about this more.
@@ -307,13 +306,13 @@ def _(
 
         rows = get_rows()
         new_treatments_obj = Treatments()
-    
+
         for row in rows:
             begin, end = row["range"] # we are unpacking a 2 item list, so this is fine
             new_treatments_obj[row["name"]] = (begin, end)
 
         metadata.treatments = new_treatments_obj
-    
+
         return metadata
 
     def translate_treatments_to_rows():
