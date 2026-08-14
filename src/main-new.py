@@ -39,9 +39,15 @@ def _(
     mo,
 ):
     actions_explanation = """
-    To inspect or change global config settings that apply to all measurements, go to the Config tab. You can save these settings to a file, from which they will be re-loaded next time. Individual measurement parameters are read from files as well, each measurement's folder is supposed to contain a metadata.toml file. You can use the Metadata tab to create, edit, and save these. If no metadata file exists in the selected folder, the default settings are loaded from a template, but file saving is **not** automatic. You need to save each metadata file manually.
+    You can inspect or change global settings that apply to all measurements in the **Global configuration section**. You can save these settings to a file, from which they will be re-loaded next time. Individual measurement parameters are read from files as well, each measurement's folder is supposed to contain a metadata.yaml file. You can use the **Experiment details** section to create, edit, and save these. If no metadata file exists in the selected folder, the default settings are loaded from a template, but file saving is **not** automatic. You need to save each metadata file manually. (Global configurations work the same way, if the file cannot be found, a default template is used. Changes must be saved manually.)
 
     To speed up analysis work, a caching mechanism is used. The point is that reading and writing Excel files is slow, but if we save our data in a better file format, we will be able to perform repeated analyses with different settings without having to read the Excel data again, and this benefit will persist after the app is closed. (As opposed to just keeping the data in memory.) Each measurement's Excel file is read, and the data is saved in a different format which is significantly faster to read, but cannot be used for other work. If you want to inspect the results or load the data into a different program, you will need to convert back to Excel.
+
+    ###Analysis options are as follows:
+    - Process: to do data processing and create reports
+    - Make graphs: to draw line plots for each cell
+    - Summarize: to summarize all existing reports
+    - Repeat: normally the program ignores folders that already have a report file in them, this option tells it to process everything anyway
     """
 
     process_check = mo.ui.checkbox(label="Process")
@@ -49,10 +55,13 @@ def _(
     sum_check = mo.ui.checkbox(label="Summarize")
     repeat_check = mo.ui.checkbox(label="Repeat")
 
-    top_section_1 = mo.vstack([
+    top_section_0 = mo.vstack([
         mo.md(text="#Instructions"),
-        mo.md(text=actions_explanation),
     ], align="center")
+
+    top_section_1 = mo.vstack([
+        mo.md(text=actions_explanation),
+    ])
 
     top_section_2 = mo.vstack([
         mo.hstack([process_check, graph_check, sum_check, repeat_check], justify="center"),
@@ -61,7 +70,7 @@ def _(
         hide_settings_button,
     ])
 
-    mo.vstack([top_section_1, top_section_2], gap=1.5)
+    mo.vstack([top_section_0, top_section_1, top_section_2], gap=1.5)
     return graph_check, process_check, sum_check
 
 
@@ -245,7 +254,7 @@ def _(config: "Config", metadata, mo, save_config):
     # UI element definitions
 
     # BUTTONS
-    analysis = mo.ui.run_button(label="Analyze", full_width=True, tooltip="Perform data analysis with the current settings.")
+    analysis = mo.ui.run_button(label="Analyze!", full_width=True, tooltip="Perform data analysis with the current settings.")
     convert_to_cache = mo.ui.run_button(label="Convert to cache", full_width=True, tooltip="Convert Excel data to the cached format.")
     convert_from_cache = mo.ui.run_button(label="Convert to Excel", full_width=True, tooltip="Convert data back to Excel files. Overwrites originals.")
     clear_cache = mo.ui.run_button(label="Clear cache", full_width=True, tooltip="Delete all cached files. Excel data remains untouched.")
