@@ -5,7 +5,39 @@ app = marimo.App(width="medium")
 
 
 @app.cell
-def _(analysis, clear_cache, convert_from_cache, convert_to_cache, mo):
+def _(mo):
+    # These first 3 cells let the configuration settings display be toggled
+    get_button, set_button = mo.state(True)
+    # True means settings are currently displayed
+    # False means settings not displayed
+    return get_button, set_button
+
+
+@app.cell
+def _(get_button):
+    hide_label = "Hide global settings" if get_button() else "Show global settings"
+    return (hide_label,)
+
+
+@app.cell
+def _(get_button, hide_label, mo, set_button):
+    hide_settings_button = mo.ui.button(
+        label= hide_label,
+        full_width=True,
+        on_click=lambda _: set_button(not get_button())
+    )
+    return (hide_settings_button,)
+
+
+@app.cell
+def _(
+    analysis,
+    clear_cache,
+    convert_from_cache,
+    convert_to_cache,
+    hide_settings_button,
+    mo,
+):
     actions_explanation = """
     To inspect or change global config settings that apply to all measurements, go to the Config tab. You can save these settings to a file, from which they will be re-loaded next time. Individual measurement parameters are read from files as well, each measurement's folder is supposed to contain a metadata.toml file. You can use the Metadata tab to create, edit, and save these. If no metadata file exists in the selected folder, the default settings are loaded from a template, but file saving is **not** automatic. You need to save each metadata file manually.
 
@@ -26,6 +58,7 @@ def _(analysis, clear_cache, convert_from_cache, convert_to_cache, mo):
         mo.hstack([process_check, graph_check, sum_check, repeat_check], justify="center"),
         mo.hstack([analysis, convert_to_cache], justify="start"),
         mo.hstack([clear_cache, convert_from_cache], justify="start"),
+        hide_settings_button,
     ])
 
     mo.vstack([top_section_1, top_section_2], gap=1.5)
@@ -81,6 +114,7 @@ def _(
 @app.cell
 def _(
     SD_mult,
+    get_button,
     method,
     mo,
     photo_corr,
@@ -108,7 +142,12 @@ def _(
         report_name,
         summary_name
     ])
-    mo.vstack([config_section_1, config_section_2, save_config_btn])
+
+    settings_state = get_button()
+    if settings_state:
+        mo.output.replace(mo.vstack([config_section_1, config_section_2, save_config_btn]))
+    else:
+        mo.output.clear()
     return
 
 
@@ -287,7 +326,6 @@ def _(mo):
     - Make the metadata editor clearly indicate which folder's data we're looking at
     - Add more filters to exclude bad cells
     - Maybe let the user choose which fitlers to use
-    - Maybe add a button to hide/show the config panel
     """)
     return
 
