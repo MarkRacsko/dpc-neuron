@@ -78,8 +78,6 @@ def _(
 def _(AnalysisEngine, Converter, config: "Config"):
     # these wont work just yet
     analysis_engine = AnalysisEngine(config, True) # the True is for repeat, I think this object needs a bit of a redesign
-    analysis_engine.create_caches()
-    analysis_engine.create_processor_instances()
     converter = Converter(config.input.target_folder, config.output.report_name)
     return analysis_engine, converter
 
@@ -99,6 +97,12 @@ def _(
     # FUNCTIONALITY
     # Analysis
     if analysis.value:
+        # These things must happen here and not earlier because if the config is
+        # incorrect (the user hasn't selecter the appropriate target folder yet),
+        # we would be doing a lot of work pointlessly or crash
+        converter.convert_to_pickle()
+        analysis_engine.create_processor_instances()
+    
         if process_check.value:
             analysis_engine.process_data([]) # the error list
         if graph_check.value:

@@ -3,7 +3,6 @@ from threading import Thread
 
 import pandas as pd
 
-from .converter import Converter
 from .processor import DataProcessor
 from .toml_data import Config
 
@@ -46,9 +45,6 @@ class AnalysisEngine:
         
         return errors
     
-    def create_caches(self) -> None:
-        converter = Converter(self.config.input.target_folder, self.config.output.report_name)
-        converter.convert_to_pickle()
 
     def process_data(self, errors: list[str]):
         """Processes all subdirectories in the target directory, using the method set in the config file.
