@@ -3,15 +3,11 @@ from threading import Thread
 
 import pandas as pd
 
-from ..utilities.toml_data import Config
+from utilities.custom_types import ExperimentalCondition, ExperimentalData
+from utilities.toml_data import Config
+
 from .processor import DataProcessor
 
-type ExperimentalCondition = list[str] # list of agonists used in this particular experiment
-type ExperimentalData = tuple[str, pd.Series] # the string is the folder name where the experiment's data is;
-# the pd.Series is multi-indexed, by the reaction column names and shows how many cells belong to a given combination
-# of reactions (such as TRPM3+ TRPA1- TRPV1- neurons)
-# In the Nuitka-compiled version of the program, the [int] typehint had to be removed from pd.Series because
-# it caused an error
 
 class AnalysisEngine:
     """Orchestrates data processing and presents a simpler interface to main.

@@ -7,8 +7,9 @@ import toml
 from matplotlib.figure import Figure
 from scipy.ndimage import uniform_filter1d
 
-from ..utilities.toml_data import Conditions, Config, Metadata
-from ..utilities.validation import validate_metadata
+from utilities.toml_data import Conditions, Config, Metadata
+from utilities.validation import validate_metadata
+
 from .converter import NAME_SHEET_SEP
 from .processing_functions import (
     baseline_threshold,

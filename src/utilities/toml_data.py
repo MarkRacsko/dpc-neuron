@@ -4,10 +4,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-type TimeValue = int | str
-# This is used in the _Treatment class for the begin and end values of agonist treatments. The reason it exists is that
-# the way my validation and data processing functions work forces makes it so that these fields cannot be declared as
-# just int or just str. (And I don't want to redesign the whole thing at this point.)
+from .custom_types import TimeValue
+
 
 @dataclass(init=False)
 class Config:

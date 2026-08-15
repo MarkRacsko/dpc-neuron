@@ -105,9 +105,9 @@ def _(
         # we would be doing a lot of work pointlessly or crash
         converter.convert_to_pickle()
         errors = analysis_engine.create_processor_instances() # error means a metadata file is missing
-    
+
         mo.stop(predicate=errors, output=mo.callout(f"ERROR: Metadata files are missing: {errors}"))
-    
+
         if process_check.value:
             errors = analysis_engine.process_data() # the error list
             mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
@@ -447,13 +447,6 @@ def _():
         mo,
         yaml,
     )
-
-
-@app.cell
-def _(mo):
-    with mo.status.progress_bar(total=100) as pb:
-        print(type(pb))
-    return
 
 
 if __name__ == "__main__":
