@@ -428,8 +428,8 @@ def _(Treatments, deepcopy, metadata, metadata_file, mo, ui_container, yaml):
 def _():
     import marimo as mo
     import yaml
-    from interface.templates import CONFIG_TEMPLATE, METADATA_TEMPLATE
-    from analysis.toml_data import Config, Metadata, Treatments
+    from utilities.templates import CONFIG_TEMPLATE, METADATA_TEMPLATE
+    from utilities.toml_data import Config, Metadata, Treatments
     from pathlib import Path
     from copy import deepcopy
     from analysis.engine import AnalysisEngine
@@ -447,6 +447,13 @@ def _():
         mo,
         yaml,
     )
+
+
+@app.cell
+def _(mo):
+    with mo.status.progress_bar(total=100) as pb:
+        print(type(pb))
+    return
 
 
 if __name__ == "__main__":

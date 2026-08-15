@@ -3,8 +3,8 @@ from threading import Thread
 
 import pandas as pd
 
+from ..utilities.toml_data import Config
 from .processor import DataProcessor
-from .toml_data import Config
 
 type ExperimentalCondition = list[str] # list of agonists used in this particular experiment
 type ExperimentalData = tuple[str, pd.Series] # the string is the folder name where the experiment's data is;
