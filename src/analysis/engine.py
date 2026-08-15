@@ -46,9 +46,10 @@ class AnalysisEngine:
         return errors
     
 
-    def process_data(self, errors: list[str]):
+    def process_data(self) -> list[str]:
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
+        errors: list[str] = []
         arg_tuple = (errors,)
         threads = []
         
@@ -59,21 +60,27 @@ class AnalysisEngine:
 
         for thread in threads:
             thread.join()
-        
 
-    def summarize_results(self):
+        return errors
+
+    def summarize_results(self) -> list[str]:
         """Creates a summary file from all available measurement reports.
         """
         name = self.config.output.summary_name
         summary_file_name: Path = self.config.input.target_folder / f"{name}.xlsx"
         threads = []
+        errors = []
+        arg_tuple = (errors,)
         for processor in self._processors:
-            thread = Thread(target=processor.load_summary_from_report)
+            thread = Thread(target=processor.load_summary_from_report, args=arg_tuple)
             threads.append(thread)
             thread.start()
 
         for thread in threads:
             thread.join()
+
+        if errors:
+            return errors # if there were any errors, we don't want to proceed
 
         for processor in self._processors:
             assert isinstance(processor.report, pd.DataFrame) # will never fail, but Pylance can't see why
@@ -97,16 +104,24 @@ class AnalysisEngine:
                 
                 summary.to_excel(writer, sheet_name=sheet_name)
 
+        return errors
+        # if this return is hit, there were no errors, the list is empty
+        # technically not necessary, but makes the type checker happy
 
-    def graph_data(self):
+
+    def graph_data(self) -> list[str]:
         """Makes graphs from every measurement in every subdirectory. The graphs will be saved in new folders, each
         named after the measurement file from which the graphs were created.
         """
+        errors: list[str] = []
+        arg_tuple = (errors,)
         threads = []
         for processor in self._processors:
-            thread = Thread(target=processor.make_graphs)
+            thread = Thread(target=processor.make_graphs, args=arg_tuple)
             threads.append(thread)
             thread.start()
 
         for thread in threads:
             thread.join()
+
+        return errors

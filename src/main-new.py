@@ -48,6 +48,8 @@ def _(
     - Make graphs: to draw line plots for each cell
     - Summarize: to summarize all existing reports
     - Repeat: normally the program ignores folders that already have a report file in them, this option tells it to process everything anyway
+
+    Graphing and summarizing can only be selected after (or at the same time as) processing.
     """
 
     process_check = mo.ui.checkbox(label="Process")
@@ -91,6 +93,7 @@ def _(
     convert_to_cache,
     converter,
     graph_check,
+    mo,
     process_check,
     sum_check,
 ):
@@ -98,17 +101,22 @@ def _(
     # Analysis
     if analysis.value:
         # These things must happen here and not earlier because if the config is
-        # incorrect (the user hasn't selecter the appropriate target folder yet),
+        # incorrect (the user hasn't selected the appropriate target folder yet),
         # we would be doing a lot of work pointlessly or crash
         converter.convert_to_pickle()
-        analysis_engine.create_processor_instances()
+        errors = analysis_engine.create_processor_instances() # error means a metadata file is missing
+    
+        mo.stop(predicate=errors, output=mo.callout(f"ERROR: Metadata files are missing: {errors}"))
     
         if process_check.value:
-            analysis_engine.process_data([]) # the error list
+            errors = analysis_engine.process_data() # the error list
+            mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
         if graph_check.value:
-            analysis_engine.graph_data()
+            errors = analysis_engine.graph_data()
+            mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
         if sum_check.value:
-            analysis_engine.summarize_results()
+            errors = analysis_engine.summarize_results()
+            mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
 
     # Conversion to cache
     if convert_to_cache.value:
@@ -328,7 +336,6 @@ def _(mo):
     # TODO
 
     ## Port existing functionality to marimo:
-    - Reevaluate how my classes handle and report errors, port error reporting to marimo
     - Add a progress bar to provide feedback on data analysis and file conversions.
     - Reconsider the program's architecture and general behavior. It may be better for repeated analysis with different settings to keep all input data in memory, instead of re-reading cached files. I don't remember exactly why I chose this design, and it may well be the correct one, but I will need to think about this more.
     - Do something about the fact that the two file browsers display the same thing yet behave differently.

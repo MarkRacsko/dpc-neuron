@@ -54,7 +54,7 @@ class DataProcessor:
                 if errors:
                     return errors
         except FileNotFoundError:
-            return f"Metadata file missing from {self.path}."
+            return f"\n- {self.path}."
 
         self.conditions = metadata.conditions
 
@@ -151,9 +151,15 @@ class DataProcessor:
             with self._error_lock:
                 error_list.append(message)
 
-    def make_graphs(self):
+    def make_graphs(self, error_list: list[str]):
         if self.report is None:
-            self.report = pd.read_excel(self.report_path, sheet_name="Cells")
+            try:
+                self.report = pd.read_excel(self.report_path, sheet_name="Cells")
+            except FileNotFoundError:
+                with self._error_lock:
+                    error_list.append(f"{self.path}")
+                    return # there is no report, we cannot proceed
+
         
         for file in self.measurement_files:
             graphing_path: Path = self.path / Path(file.stem)
@@ -217,8 +223,12 @@ class DataProcessor:
             fig.savefig(save_dir / f"Cell no. {i}.png", dpi=300)
             fig.clf()
 
-    def load_summary_from_report(self) -> None:
-            self.report = pd.read_excel(self.report_path, sheet_name="Summary", engine="calamine")
+    def load_summary_from_report(self, error_list: list[str]) -> None:
+            try:
+                self.report = pd.read_excel(self.report_path, sheet_name="Summary", engine="calamine")
+            except FileNotFoundError:
+                with self._error_lock:
+                    error_list.append(f"{self.path}")
 
     def prepare_ratiometric_data(self, file: Path, smoothing_window: int, corr: bool) -> tuple[list[str], np.ndarray]:
         """Reads data from Fura2 measurements, then performs background substraction, smoothing, and photobleaching
