@@ -3,13 +3,13 @@ from threading import Lock
 
 import numpy as np
 import pandas as pd
-import toml
+import yaml
 from matplotlib.figure import Figure
 from scipy.ndimage import uniform_filter1d
 
 from utilities.custom_types import ProgressBar
-from utilities.toml_data import Conditions, Config, Metadata
 from utilities.validation import validate_metadata
+from utilities.yaml_data import Conditions, Config, Metadata
 
 from .converter import NAME_SHEET_SEP
 from .processing_functions import (
@@ -48,9 +48,9 @@ class DataProcessor:
 
     def parse_metadata(self) -> str | None:
         try:
-            file = self.path / "metadata.toml"
+            file = self.path / "metadata.yaml"
             with open(file, "r") as f:
-                metadata_as_dict = toml.load(f)
+                metadata_as_dict = yaml.safe_load(f)
                 metadata = Metadata(metadata_as_dict)
                 errors = validate_metadata(self.path.name, metadata_as_dict)
                 if errors:

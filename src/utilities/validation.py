@@ -2,7 +2,7 @@ from numbers import Rational
 from pathlib import Path
 from typing import Any
 
-from .toml_data import Treatments
+from .yaml_data import Treatments
 
 
 def validate_config(config: dict[str, dict[str, Any]]) -> str:

@@ -4,7 +4,7 @@ from threading import Thread
 import pandas as pd
 
 from utilities.custom_types import ExperimentalCondition, ExperimentalData, ProgressBar
-from utilities.toml_data import Config
+from utilities.yaml_data import Config
 
 from .processor import DataProcessor
 

@@ -443,7 +443,7 @@ def _():
     import marimo as mo
     import yaml
     from utilities.templates import CONFIG_TEMPLATE, METADATA_TEMPLATE, MESSAGES
-    from utilities.toml_data import Config, Metadata, Treatments
+    from utilities.yaml_data import Config, Metadata, Treatments
     from pathlib import Path
     from copy import deepcopy
     from analysis.engine import AnalysisEngine
