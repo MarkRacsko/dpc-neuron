@@ -30,3 +30,16 @@ METADATA_TEMPLATE = {
         }
     }
 }
+
+# this is used for selecting what message we want to display when the program has finished its work
+# 1st number: processing y/n, 2nd: summary y/n, 3rd: graphing y/n
+MESSAGES: dict[tuple[int, int, int], str] = {
+    (0, 0, 0): "Please select at least one action to perform.",
+    (1, 0, 0): "Finished processing data.",
+    (0, 1, 0): "Finished summarizing results.",
+    (0, 0, 1): "Finished making graphs.",
+    (1, 1, 0): "Finished processing data and summarizing results.",
+    (1, 0, 1): "Finished processing data and making graphs.",
+    (0, 1, 1): "Finished summarizing results and making graphs.",
+    (1, 1, 1): "Finished processing data, summarizing results, and making graphs."
+}

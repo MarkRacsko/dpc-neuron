@@ -3,7 +3,7 @@ from threading import Thread
 
 import pandas as pd
 
-from utilities.custom_types import ExperimentalCondition, ExperimentalData
+from utilities.custom_types import ExperimentalCondition, ExperimentalData, ProgressBar
 from utilities.toml_data import Config
 
 from .processor import DataProcessor
@@ -22,32 +22,33 @@ class AnalysisEngine:
         self._processors: list[DataProcessor] = []
         self.repeat = repeat
         self.experiments: dict[ExperimentalCondition, list[ExperimentalData]]
+        self.number_of_files: int
 
-    def create_processor_instances(self) -> list[str]:
-        """Creates a new SubDir object for the given path and appends it to a (private) list.
+    def create_processor_instances(self):
+        """Creates a new DataProcessor object for the given path and appends it to a (private) list.
 
         Returns:
             list[str]: A list of error messages produced by the individual subdirectory level processor objects.
             Empty if no errors occured.
         """
-        errors = []
         for path in self.config.input.target_folder.iterdir():
             if path.is_dir():
                 instance = DataProcessor(path, self.config)
-                error = instance.preprocessing(self.repeat)
-                if error is not None:
-                    errors.append(error)
                 self._processors.append(instance)
-        
-        return errors
+        self.number_of_files = sum([len(processor.measurement_files) for processor in self._processors])
     
 
-    def process_data(self) -> list[str]:
+    def process_data(self, progress_bar: ProgressBar) -> list[str]:
         """Processes all subdirectories in the target directory, using the method set in the config file.
         """
         errors: list[str] = []
-        arg_tuple = (errors,)
+        arg_tuple = (errors, progress_bar)
         threads = []
+
+        for processor in self._processors:
+            error = processor.preprocessing(self.repeat)
+            if error is not None:
+                errors.append(error)
         
         for processor in self._processors:
             thread = Thread(target=processor.make_report, args=arg_tuple)
@@ -105,12 +106,12 @@ class AnalysisEngine:
         # technically not necessary, but makes the type checker happy
 
 
-    def graph_data(self) -> list[str]:
+    def graph_data(self, progress_bar: ProgressBar) -> list[str]:
         """Makes graphs from every measurement in every subdirectory. The graphs will be saved in new folders, each
         named after the measurement file from which the graphs were created.
         """
         errors: list[str] = []
-        arg_tuple = (errors,)
+        arg_tuple = (errors, progress_bar)
         threads = []
         for processor in self._processors:
             thread = Thread(target=processor.make_graphs, args=arg_tuple)

@@ -80,12 +80,14 @@ def _(
 def _(AnalysisEngine, Converter, config: "Config"):
     # these wont work just yet
     analysis_engine = AnalysisEngine(config, True) # the True is for repeat, I think this object needs a bit of a redesign
+    analysis_engine.create_processor_instances() # This should not be able to fail. The reason it needs to be here is that we need to know the total number of measurement files in order to create a mo.status.progress_bar instance. IF the target folder in the config is not yet correct, that's not going to be a problem. When the user selects the correct folder, this cell will rerun.
     converter = Converter(config.input.target_folder, config.output.report_name)
     return analysis_engine, converter
 
 
 @app.cell
 def _(
+    MESSAGES,
     analysis,
     analysis_engine,
     clear_cache,
@@ -98,37 +100,49 @@ def _(
     sum_check,
 ):
     # FUNCTIONALITY
+    n_files = analysis_engine.number_of_files
+
     # Analysis
     if analysis.value:
-        # These things must happen here and not earlier because if the config is
-        # incorrect (the user hasn't selected the appropriate target folder yet),
-        # we would be doing a lot of work pointlessly or crash
-        converter.convert_to_pickle()
-        errors = analysis_engine.create_processor_instances() # error means a metadata file is missing
-
-        mo.stop(predicate=errors, output=mo.callout(f"ERROR: Metadata files are missing: {errors}"))
-
-        if process_check.value:
-            errors = analysis_engine.process_data() # the error list
-            mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
-        if graph_check.value:
-            errors = analysis_engine.graph_data()
-            mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
-        if sum_check.value:
-            errors = analysis_engine.summarize_results()
-            mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
+        # 1st number: processing y/n, 2nd: summary y/n, 3rd: graphing y/n
+        selections = (process_check.value, sum_check.value, graph_check.value)
+        toast_title = "Success!" if any(selections) else "No work was done!"
+        toast_message = MESSAGES[selections]
+    
+        with mo.status.progress_bar(total=n_files) as pb:
+            pb.update(increment=0, title="Converting", subtitle="Please wait...")
+            converter.convert_to_pickle(pb) # This cannot be safely called any earlier. Does nothing if the user already clicked Convert to cache.
+    
+            if process_check.value:
+                pb.update(increment=0, title="Processing data", subtitle="Please wait...")
+                errors = analysis_engine.process_data(pb) # the error list
+                mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
+            if graph_check.value:
+                pb.update(increment=0, title="Graphing Ca traces from measurement files", subtitle="Please wait...")
+                errors = analysis_engine.graph_data(pb)
+                mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
+            if sum_check.value:
+                # This should be fast enough so that it doesn't require the progress bar
+                errors = analysis_engine.summarize_results()
+                mo.stop(predicate=errors, output=mo.callout(f"ERROR: {errors}"))
+        mo.status.toast(title=toast_title, description=toast_message)
 
     # Conversion to cache
     if convert_to_cache.value:
-        converter.convert_to_pickle()
+        with mo.status.progress_bar(total=n_files, title="Converting", subtitle="Please wait...") as pb:
+            converter.convert_to_pickle(pb)
+        mo.status.toast(title="Success", description="Finished converting Excel files to cached format.")
 
     # Clear the cache
     if clear_cache.value:
+        # This should be fast enough so that it doesn't require the progress bar
         converter.purge_cache()
 
     # Conversion from cache to Excel
     if convert_from_cache.value:
-        converter.convert_to_excel()
+        with mo.status.progress_bar(total=n_files, title="Converting", subtitle="Please wait...") as pb:
+            converter.convert_to_excel(pb)
+        mo.status.toast(title="Success", description="Finished converting files to Excel format.")
     return
 
 
@@ -336,7 +350,7 @@ def _(mo):
     # TODO
 
     ## Port existing functionality to marimo:
-    - Add a progress bar to provide feedback on data analysis and file conversions.
+    - ~~Add a progress bar to provide feedback on data analysis and file conversions.~~ Test that it actually works with real data.
     - Reconsider the program's architecture and general behavior. It may be better for repeated analysis with different settings to keep all input data in memory, instead of re-reading cached files. I don't remember exactly why I chose this design, and it may well be the correct one, but I will need to think about this more.
     - Do something about the fact that the two file browsers display the same thing yet behave differently.
 
@@ -428,7 +442,7 @@ def _(Treatments, deepcopy, metadata, metadata_file, mo, ui_container, yaml):
 def _():
     import marimo as mo
     import yaml
-    from utilities.templates import CONFIG_TEMPLATE, METADATA_TEMPLATE
+    from utilities.templates import CONFIG_TEMPLATE, METADATA_TEMPLATE, MESSAGES
     from utilities.toml_data import Config, Metadata, Treatments
     from pathlib import Path
     from copy import deepcopy
@@ -439,6 +453,7 @@ def _():
         AnalysisEngine,
         Config,
         Converter,
+        MESSAGES,
         METADATA_TEMPLATE,
         Metadata,
         Path,
@@ -447,6 +462,22 @@ def _():
         mo,
         yaml,
     )
+
+
+@app.cell
+def _(mo):
+    from time import sleep
+    with mo.status.progress_bar(total=3) as test_pb:
+        print(dir(test_pb))
+        sleep(0.5)
+        test_pb.update(1)
+        sleep(0.5)
+        test_pb.update(1)
+        sleep(0.5)
+        test_pb.update(1)
+        sleep(0.5)
+        test_pb.update(-2)
+    return
 
 
 if __name__ == "__main__":

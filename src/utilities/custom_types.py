@@ -1,4 +1,5 @@
 """Serves the purpose of storing all my custom type hints in one place."""
+from typing import Protocol
 
 import pandas as pd
 
@@ -15,3 +16,11 @@ type TimeValue = int | str
 # This is used in the _Treatment class for the begin and end values of agonist treatments. The reason it exists is that
 # the way my validation and data processing functions work forces makes it so that these fields cannot be declared as
 # just int or just str. (And I don't want to redesign the whole thing at this point.)
+
+class ProgressBar(Protocol):
+    """This Protocol exists because objects from libraries like marimo can sometimes be a huge pain to typehint, and the 
+    mo.status.progess_bar is. The real object has several more attributes and methods, I only implemented update because
+    this is the only part I will need.
+    """
+    def update(self, increment: int = 1, title: str | None = None, subtitle: str | None = None) -> None:
+        ...

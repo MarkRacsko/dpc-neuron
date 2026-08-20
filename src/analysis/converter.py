@@ -5,6 +5,8 @@ from threading import Lock, Thread
 import pandas as pd
 import python_calamine as cala
 
+from utilities.custom_types import ProgressBar
+
 NAME_SHEET_SEP: str = " SHEET_"
 CACHE_NAME = ".cache"
 
@@ -17,7 +19,7 @@ class Converter:
         self.report_name = report_name
         self.lock = Lock()
 
-    def convert_to_pickle(self):
+    def convert_to_pickle(self, progress_bar: ProgressBar):
         """Reads in all Excel files found in this measurement folders and converts each of their sheets into a separate
         pickled file. Uses calamine because it is a bit faster than openpyxl.
 
@@ -34,6 +36,9 @@ class Converter:
                     df = pd.DataFrame(data=numbers, columns=headers)
 
                     df.to_pickle(cache_path / f"{file.name}{NAME_SHEET_SEP}{sheet}.pkl")
+
+                with self.lock:
+                    progress_bar.update(increment=1)
 
         
         threads = []
@@ -53,7 +58,7 @@ class Converter:
                 thread.join()
 
 
-    def convert_to_excel(self):
+    def convert_to_excel(self, progress_bar: ProgressBar):
         """Converts the cached pickle files back into Excel, overwriting the original files.
 
         Args:
@@ -82,6 +87,9 @@ class Converter:
                 with pd.ExcelWriter(folder / file_name) as writer:
                     for sheet, df in contents:
                         df.to_excel(writer, sheet_name=sheet, index=False)
+
+                with self.lock:
+                    progress_bar.update(increment=1)
                 
 
         threads = []

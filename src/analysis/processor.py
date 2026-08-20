@@ -7,6 +7,7 @@ import toml
 from matplotlib.figure import Figure
 from scipy.ndimage import uniform_filter1d
 
+from utilities.custom_types import ProgressBar
 from utilities.toml_data import Conditions, Config, Metadata
 from utilities.validation import validate_metadata
 
@@ -66,7 +67,7 @@ class DataProcessor:
             self.treatment_col_names.append(agonist_name + "_reaction")
             self.treatment_col_names.append(agonist_name + "_amp")
     
-    def make_report(self, error_list: list[str]) -> None:
+    def make_report(self, error_list: list[str], progress_bar: ProgressBar) -> None:
         """Encapsulates all data processing work needed to produce a report.
 
         Args:
@@ -132,6 +133,8 @@ class DataProcessor:
             file_result["cell_type"] = cell_cols
 
             results.append(file_result)
+            with self._file_count_lock:
+                progress_bar.update(increment=1)
 
         self.report = pd.concat(results)
 
@@ -152,7 +155,7 @@ class DataProcessor:
             with self._error_lock:
                 error_list.append(message)
 
-    def make_graphs(self, error_list: list[str]):
+    def make_graphs(self, error_list: list[str], progress_bar: ProgressBar):
         if self.report is None:
             try:
                 self.report = pd.read_excel(self.report_path, sheet_name="Cells")
@@ -174,6 +177,10 @@ class DataProcessor:
             reaction_cols = [col for col in self.report.columns if "_reaction" in col]
 
             self.graph_data(x_data.flatten(), ratios, cell_cols, self.report[reaction_cols], graphing_path)
+            with self._file_count_lock:
+                progress_bar.update(increment=1)
+                # Counting the number of individual graphs made would be better, but unfortunately 
+                # the design of mo.status.progres_bar doesn't allow that.
     
     def graph_data(self, x_data: np.ndarray, traces: np.ndarray, col_names: list[str], reactions: pd.DataFrame, save_dir: Path) -> None:
         """Creates line graphs for each cell in this particular measurement file. Is called from within make_report()
