@@ -31,7 +31,7 @@ def main() -> int:
         with open(config_path, "w") as f:
             toml.dump(config.to_dict(), f)
     
-    MainWindow(config)
+    MainWindow(config, config_path)
     return 0
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from threading import Thread
 import tkinter as tk
 from tkinter import messagebox
-
+from pathlib import Path
 
 from interface.gui_panels import ConfigFrame, MetadataFrame
 from interface.gui_constants import FONT_M
@@ -15,7 +15,7 @@ from analysis.toml_data import Config
 
 
 class MainWindow:
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, config_path: Path) -> None:
         self.config = config
         self.root = tk.Tk()
         self.root.title("Ca Measurement Analyzer")
@@ -100,7 +100,7 @@ class MainWindow:
 
         self.root.update_idletasks()
         # Config editor panel
-        self.config_panel = ConfigFrame(self.root, self.config, self.config_button.winfo_width(), width=PANEL_W, height=CONFIG_H)
+        self.config_panel = ConfigFrame(self.root, self.config, config_path, self.config_button.winfo_width(), width=PANEL_W, height=CONFIG_H)
 
         # Metadata editor panel
         self.metadata_panel = MetadataFrame(self.root, self.metadata_button.winfo_width(), self.metadata_button.winfo_height(), width=PANEL_W, height=META_H)

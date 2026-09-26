@@ -20,9 +20,10 @@ from analysis.validation import validate_config, validate_treatments
 class ConfigFrame(tk.Frame):
     """Displayed in Config Editor mode. Will be moved offscreen when the program switches to a different mode.
     """
-    def __init__(self, parent, config: Config, save_button_size: int, **kwargs):
+    def __init__(self, parent, config: Config, config_path: Path, save_button_size: int, **kwargs):
         super().__init__(parent, **kwargs)
         self.config = config
+        self.config_path = config_path
 
         # Input section
         self.input_label = tk.Label(self, text="Input section", font=FONT_L)
@@ -141,14 +142,7 @@ class ConfigFrame(tk.Frame):
             messagebox.showerror(errors)
             return
         
-        standalone_mode = getattr(sys, "frozen", False)
-
-        if standalone_mode:
-            base_path = Path(sys.executable).parent
-        else:
-            base_path = Path(__file__).parent
-
-        with open(base_path / "config.toml", "w") as f:
+        with open(self.config_path, "w") as f:
             toml.dump(config_as_dict, f)
 
         messagebox.showinfo(message="Configuration saved!")
