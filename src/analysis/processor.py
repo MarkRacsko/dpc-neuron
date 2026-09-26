@@ -302,8 +302,9 @@ class DataProcessor:
         else:
             corr_arg = None
 
+        cells = np.transpose(cells)
         self.save_processed_data(file, x_data, cells, cell_cols, corr_arg)
-        return cell_cols, cells.transpose()
+        return cell_cols, cells
 
     def update_file_count(self, count: IntVar):
         """Provides feedback to the user when a file is finished processing.
